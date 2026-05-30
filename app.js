@@ -261,17 +261,18 @@ async function buildFormWorkspace() {
 
                 // Truncation configurations mapping structural maximum database bounds
                 if (inputType === 'text') {
-                    if (['Mem_Name', 'MemCert_Name', 'Fat_Name', 'Mot_Name', 'Spouse_Name', 'Type_Country', 'Place_Birth', 'Employer_Name', 'Heir_Name'].includes(attr)) extraAttributes = 'maxlength="30"'; // [cite: 355, 368, 372]
-                    else if (['Citizenship', 'Email_Address'].includes(attr)) extraAttributes = 'maxlength="20"'; // [cite: 355, 361]
-                    else if (['Perm_Address', 'Present_Address', 'Employer_Address'].includes(attr)) extraAttributes = 'maxlength="80"'; // [cite: 361, 368]
-                    else if (['Cell_Num', 'Home_Num', 'Business_Direct', 'Business_Trunk', 'Relationship'].includes(attr)) extraAttributes = 'maxlength="15"'; // [cite: 361, 372]
-                    else if (attr === 'Facial_Features') extraAttributes = 'maxlength="25"'; // [cite: 355]
+                    if (['Mem_Name', 'MemCert_Name', 'Fat_Name', 'Mot_Name', 'Spouse_Name', 'Type_Country', 'Place_Birth', 'Employer_Name', 'Heir_Name'].includes(attr)) extraAttributes = 'maxlength="30"'; 
+                    else if (['Citizenship', 'Email_Address'].includes(attr)) extraAttributes = 'maxlength="20"'; 
+                    else if (['Perm_Address', 'Present_Address', 'Employer_Address'].includes(attr)) extraAttributes = 'maxlength="80"'; 
+                    else if (attr === 'Cell_Num') extraAttributes = 'maxlength="25"'; 
+                    else if (['Home_Num', 'Business_Direct', 'Business_Trunk', 'Relationship'].includes(attr)) extraAttributes = 'maxlength="15"'; 
+                    else if (attr === 'Facial_Features') extraAttributes = 'maxlength="25"';
                 } else if (inputType === 'number') {
-                    if (['Pagibig_ID', 'Regis_num', 'CRN', 'EM_Num'].includes(attr)) extraAttributes = 'oninput="if(this.value.length > 12) this.value = this.value.slice(0, 12);"'; // [cite: 355, 361, 365]
-                    else if (attr === 'TIN_Num') extraAttributes = 'oninput="if(this.value.length > 9) this.value = this.value.slice(0, 9);"'; // [cite: 365]
-                    else if (attr === 'SSS_Num') extraAttributes = 'oninput="if(this.value.length > 11) this.value = this.value.slice(0, 11);"'; // [cite: 365]
-                    else if (['Height', 'Weight'].includes(attr)) extraAttributes = 'oninput="if(this.value.length > 3) this.value = this.value.slice(0, 3);"'; // [cite: 355]
-                    else if (['AFP_PNP_Num', 'Deped_Code'].includes(attr)) extraAttributes = 'oninput="if(this.value.length > 6) this.value = this.value.slice(0, 6);"'; // [cite: 365]
+                    if (['Pagibig_ID', 'Regis_num', 'CRN', 'EM_Num'].includes(attr)) extraAttributes = 'oninput="if(this.value.length > 12) this.value = this.value.slice(0, 12);"'; 
+                    else if (attr === 'TIN_Num') extraAttributes = 'oninput="if(this.value.length > 9) this.value = this.value.slice(0, 9);"';
+                    else if (attr === 'SSS_Num') extraAttributes = 'oninput="if(this.value.length > 11) this.value = this.value.slice(0, 11);"'; 
+                    else if (['Height', 'Weight'].includes(attr)) extraAttributes = 'oninput="if(this.value.length > 3) this.value = this.value.slice(0, 3);"'; 
+                    else if (['AFP_PNP_Num', 'Deped_Code'].includes(attr)) extraAttributes = 'oninput="if(this.value.length > 6) this.value = this.value.slice(0, 6);"'; 
                 }
 
                 inputHtml = `<input type="${inputType}" id="attr-${attr}" ${extraAttributes} autocomplete="off">`;
