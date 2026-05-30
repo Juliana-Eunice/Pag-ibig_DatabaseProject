@@ -551,3 +551,195 @@ button { border: none; border-radius: 6px; font-weight: 600; cursor: pointer; fo
     grid-column: span 2;
     margin-bottom: 10px;
 }
+
+/* --- UNIFIED CREATION CHOICE MODAL STYLES --- */
+.choice-modal-card-width {
+    width: 460px;
+}
+
+.choice-modal-body-layout {
+    padding: 24px;
+    text-align: center;
+}
+
+.choice-modal-body-layout p {
+    margin: 0 0 20px 0;
+    font-size: 14px;
+    color: var(--slate-text-light);
+    text-align: left;
+}
+
+.choice-stack-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.choice-btn-layout {
+    padding: 14px;
+    font-size: 14px;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.choice-btn-secondary-mod {
+    background-color: #f1f5f9;
+    border: 1px solid var(--grid-borders);
+}
+
+.choice-btn-text-block strong {
+    display: block;
+    font-weight: 600;
+}
+
+.choice-btn-text-block .wizard-desc {
+    font-size: 11px;
+    font-weight: 400;
+    opacity: 0.85;
+    display: block;
+    margin-top: 2px;
+}
+
+.choice-btn-text-block .standalone-desc {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--slate-text-light);
+    display: block;
+    margin-top: 2px;
+}
+
+.choice-btn-text-block .standalone-title {
+    color: var(--slate-text-dark);
+}
+
+.choice-modal-footer-padding {
+    padding: 14px 24px;
+}
+
+.choice-close-btn-layout {
+    padding: 8px 16px;
+    font-size: 13px;
+}
+
+/* --- COLLAPSIBLE SIDEBAR STRUCTURAL SYSTEM --- */
+
+/* Action Button Layout Header */
+.sidebar-toggle-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+}
+
+.sidebar-toggle-btn {
+    background: none;
+    border: none;
+    color: var(--slate-text-light);
+    padding: 6px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sidebar-toggle-btn:hover {
+    background-color: #f1f5f9;
+    color: var(--pagibig-blue);
+}
+
+/* Master Base Alignment Transitions */
+.control-sidebar {
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Target the layout drawer container forcefully through the wrapper id chain */
+body .workspace-wrapper aside#main-sidebar.minimized {
+    width: 88px !important;
+    padding: 25px 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+}
+
+/* Force the upper toggle icon row to drop structural right float positions */
+body .workspace-wrapper aside#main-sidebar.minimized .sidebar-toggle-row {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    margin-bottom: 20px !important;
+}
+
+/* Force center the toggle click target */
+body .workspace-wrapper aside#main-sidebar.minimized .sidebar-toggle-btn {
+    margin: 0 auto !important;
+}
+
+/* Force center the brand container row */
+body .workspace-wrapper aside#main-sidebar.minimized .brand-logo-container {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    margin-bottom: 15px !important;
+}
+
+/* Force center the corporate emblem graphic image */
+body .workspace-wrapper aside#main-sidebar.minimized .brand-logo-img {
+    margin: 0 auto !important;
+    display: block !important;
+}
+
+/* Vaporize typography nodes and dividers instantly */
+body .workspace-wrapper aside#main-sidebar.minimized .brand-text,
+body .workspace-wrapper aside#main-sidebar.minimized .sidebar-divider {
+    display: none !important;
+}
+
+/* Clean out side boundaries of core menu containers */
+body .workspace-wrapper aside#main-sidebar.minimized nav,
+body .workspace-wrapper aside#main-sidebar.minimized ul {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* Direct deep target pass forcing list entries into uniform centered layout cells */
+body .workspace-wrapper aside#main-sidebar.minimized ul li,
+body .workspace-wrapper aside#main-sidebar.minimized ul #help-menu-btn {
+    width: 52px !important;
+    height: 52px !important;
+    gap: 0 !important;
+    max-width: 52px !important;
+    padding: 0 !important;
+    margin: 6px auto !important;
+    display: flex !important;
+    justify-content: center !important; 
+    align-items: center !important;
+    text-align: center !important;
+    font-size: 0 !important;
+    border-left: none !important;
+}
+
+/* Force-center text glyph typography vector objects */
+body .workspace-wrapper aside#main-sidebar.minimized ul li .material-symbols-outlined {
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 24px !important;
+    display: inline-block !important;
+    text-align: center !important;
+    width: auto !important;
+}
+
+/* Keep selected highlighting centered and rounded */
+body .workspace-wrapper aside#main-sidebar.minimized ul li.selected {
+    border-radius: 12px !important;
+    box-shadow: 0 4px 10px rgba(0, 86, 145, 0.2) !important;
+}

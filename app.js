@@ -315,7 +315,84 @@ async function buildFormWorkspace() {
     }
 }
 
-// Central Commits Processing Pipeline Engine Customization
+// 1. New Routing Controller for the unified Add Button
+function promptRecordCreationType() {
+    const activeTableLabel = activeTable.charAt(0).toUpperCase() + activeTable.slice(1);
+    const promptMessage = `Choose your entry mode:\n\n• Click YES to launch the Full Multi-Step Registration Wizard (Starts at Member Information).\n• Click CANCEL to add a Single Standalone Row directly into the active "${activeTableLabel}" table matrix.`;
+    
+    // Leveraging your built-in protected custom confirmation alert frame
+    executeProtectedConfirmationPrompt(promptMessage, () => {
+        // Affirmative Callback: Kickstart full procedural wizard sequence
+        initiateNewMemberWizard();
+    });
+
+    // Modifying the text attributes of your custom prompt template dynamically to fit a dual choice
+    const overlay = document.getElementById('confirm-modal-overlay');
+    if (overlay && !overlay.classList.contains('hidden')) {
+        document.getElementById('confirm-btn-yes').innerText = "Full Step Wizard";
+        document.getElementById('confirm-btn-no').innerText = "Single Standalone Row";
+        
+        // Intercept standard cancel click to trigger single row flow instead of escaping
+        document.getElementById('confirm-btn-no').onclick = () => {
+            overlay.classList.add('hidden');
+            resetPromptButtonLabels();
+            
+            // Execute fallback single log row transaction creation matching native logic
+            clearFormCache(); 
+            buildFormWorkspace(); 
+            openCrudModal();
+        };
+    }
+}
+
+// 2. Helper to restore standard labels so Delete/Purge confirmation modals remain untouched
+function resetPromptButtonLabels() {
+    const btnYes = document.getElementById('confirm-btn-yes');
+    const btnNo = document.getElementById('confirm-btn-no');
+    if (btnYes) btnYes.innerText = "Confirm Action";
+    if (btnNo) btnNo.innerText = "Cancel";
+}
+
+// 3. Intercept standard close/confirm callbacks to make sure labels revert automatically
+const originalExecuteProtectedConfirmationPrompt = executeProtectedConfirmationPrompt;
+executeProtectedConfirmationPrompt = function(promptString, affirmativeCallback) {
+    originalExecuteProtectedConfirmationPrompt(promptString, () => {
+        affirmativeCallback();
+        resetPromptButtonLabels();
+    });
+    
+    // If user closes via secondary button hook
+    const btnNo = document.getElementById('confirm-btn-no');
+    const overlay = document.getElementById('confirm-modal-overlay');
+    const originalNoClick = btnNo.onclick;
+    btnNo.onclick = () => {
+        if (originalNoClick) originalNoClick();
+        resetPromptButtonLabels();
+    };
+};
+
+// --- UNIFIED CREATION SELECTION INTERFACE SYSTEM ---
+
+function openChoiceModal() {
+    document.getElementById('choice-modal-overlay').classList.remove('hidden');
+}
+
+function closeChoiceModal() {
+    document.getElementById('choice-modal-overlay').classList.add('hidden');
+}
+
+function handleChoiceSelection(selectionType) {
+    closeChoiceModal();
+    
+    if (selectionType === 'wizard') {
+        initiateNewMemberWizard();
+    } else if (selectionType === 'single') {
+        clearFormCache();
+        buildFormWorkspace();
+        openCrudModal();
+    }
+}
+
 // Central Commits Processing Pipeline Engine Customization
 async function commitSaveTransaction() {
     const dataPayload = {};
@@ -753,5 +830,24 @@ function evaluateOfwFieldsVisibility(selectedSubtype) {
         const inputCountry = document.getElementById('attr-Type_Country');
         if (inputWork) inputWork.value = "";
         if (inputCountry) inputCountry.value = "";
+    }
+}
+
+// --- ACCELERATED SIDEBAR DISPLAY LAYOUT ENGINE ---
+
+function toggleSidebarMenuLayout() {
+    const sidebar = document.getElementById('main-sidebar');
+    const toggleIcon = document.getElementById('toggle-icon');
+    
+    if (!sidebar) return;
+    
+    // Toggle the minimized utility target class
+    sidebar.classList.toggle('minimized');
+    
+    // Switch vector font glyph indicators depending on current rendering visibility states
+    if (sidebar.classList.contains('minimized')) {
+        toggleIcon.innerText = 'menu';
+    } else {
+        toggleIcon.innerText = 'menu_open';
     }
 }

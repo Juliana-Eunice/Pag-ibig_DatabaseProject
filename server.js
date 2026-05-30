@@ -1,4 +1,4 @@
-require('dotenv').config(); // 💡 Injects local .env key-value pairs into system memory safely
+require('dotenv').config(); 
 
 function cleanPayloadData(dataObject) {
     const cleaned = { ...dataObject };
@@ -18,7 +18,7 @@ const app = express();
 app.use(cors()); 
 app.use(express.json());
 
-// --- DATABASE CONNECTION CONFIGURATION (SECURED 🔒) ---
+
 const db = mysql.createPool({
     host: process.env.DB_HOST || '127.0.0.1',       
     user: process.env.DB_USER || 'root',            
@@ -30,7 +30,7 @@ const db = mysql.createPool({
     queueLimit: 0
 });
 
-// Verify connection immediately upon launch
+
 db.getConnection((err, connection) => {
     if (err) {
         console.error('❌ Database connection failed! Check if MySQL Server is running:', err.message);
@@ -40,7 +40,7 @@ db.getConnection((err, connection) => {
     }
 });
 
-// --- CASE MAPPING CONFIGURATION ---
+
 const physicalTableCasing = {
     member: 'Member',
     contact: 'Contact',
@@ -61,9 +61,9 @@ const tableKeyMappings = {
     heir: ['Pagibig_ID', 'Heir_Code']              
 };
 
-// --- DYNAMIC API ROUTE HANDLERS ---
 
-// [READ] Data API
+
+
 app.get('/api/table/:name', (req, res) => {
     const tableKey = req.params.name.toLowerCase();
     const actualTableName = physicalTableCasing[tableKey] || tableKey;
@@ -77,7 +77,7 @@ app.get('/api/table/:name', (req, res) => {
     });
 });
 
-// [CREATE] Data API
+
 app.post('/api/create/:table', (req, res) => {
     const tableKey = req.params.table.toLowerCase();
     const actualTableName = physicalTableCasing[tableKey] || tableKey;
@@ -89,7 +89,7 @@ app.post('/api/create/:table', (req, res) => {
     });
 });
 
-// [UPDATE] Data API
+
 app.put('/api/update/:table', (req, res) => {
     const tableKey = req.params.table.toLowerCase();
     const actualTableName = physicalTableCasing[tableKey] || tableKey;
@@ -114,7 +114,7 @@ app.put('/api/update/:table', (req, res) => {
     });
 });
 
-// [DELETE] Data API
+
 app.delete('/api/delete/:table', (req, res) => {
     const tableKey = req.params.table.toLowerCase();
     const actualTableName = physicalTableCasing[tableKey] || tableKey;

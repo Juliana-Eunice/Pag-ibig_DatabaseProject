@@ -14,13 +14,18 @@
 <body>
 
     <div class="workspace-wrapper">
-        <aside class="control-sidebar">
+        <aside class="control-sidebar" id="main-sidebar">
+            <div class="sidebar-toggle-row">
+                <button class="sidebar-toggle-btn" onclick="toggleSidebarMenuLayout()" title="Toggle Sidebar Display">
+                    <span class="material-symbols-outlined" id="toggle-icon">menu_open</span>
+                </button>
+            </div>
             <div class="brand-logo-container">
                 <img src="Pag-IBIG.png" alt="Pag-IBIG Fund Logo" class="brand-logo-img">
         
                 <div class="brand-text">
                     <h2>Pag-IBIG Fund</h2>
-                    <p class="brand-sub">Admin Desk Ledger</p>
+                    <p class="brand-sub">Member Database System</p>
                 </div>
             </div>
             <div class="sidebar-divider"></div>
@@ -66,12 +71,8 @@
                     <input type="text" id="ledger-search-input" placeholder="Search this table..." onkeyup="executeLedgerSearchFilter()">
                 </div>
 
-                <button class="btn-primary flex-center" onclick="initiateNewMemberWizard()" style="background-color: #166534; margin-right: 10px;">
-                    <span class="material-symbols-outlined">assignment_ind</span> Register New Member Wizard
-                </button>
-
-                <button class="btn-primary flex-center" onclick="clearFormCache(); buildFormWorkspace(); openCrudModal();" style="background-color: #ffffff; color: var(--slate-text-dark); border: 1px solid var(--grid-borders);">
-                    <span class="material-symbols-outlined">add_box</span> Add Single Row
+                <button class="btn-primary flex-center" onclick="openChoiceModal()">
+                    <span class="material-symbols-outlined">add_box</span> Add Record Entry
                 </button>
             </header>
 
@@ -198,6 +199,39 @@
             </main>
             <footer class="modal-footer">
                 <button class="btn-primary" onclick="closeHelpModal()">Got it</button>
+            </footer>
+        </div>
+    </div>
+
+    <div id="choice-modal-overlay" class="modal-overlay hidden">
+        <div class="modal-card choice-modal-card-width">
+            <header class="modal-header">
+                <h3 id="choice-modal-title">Add Record Entry</h3>
+                <button class="close-modal-btn" onclick="closeChoiceModal()">&times;</button>
+            </header>
+            <main class="modal-body choice-modal-body-layout">
+                <p>What type of record do you want to add?</p>
+                
+                <div class="choice-stack-container">
+                    <button class="btn-primary choice-btn-layout" onclick="handleChoiceSelection('wizard')">
+                        <span class="material-symbols-outlined">assignment_ind</span>
+                        <div class="choice-btn-text-block">
+                            <strong>Full member record</strong>
+                            <span class="wizard-desc">Encode all fields across tables for one member.</span>
+                        </div>
+                    </button>
+                    
+                    <button class="btn-secondary choice-btn-layout choice-btn-secondary-mod" onclick="handleChoiceSelection('single')">
+                        <span class="material-symbols-outlined">add_box</span>
+                        <div class="choice-btn-text-block">
+                            <strong class="standalone-title">Only this table</strong>
+                            <span class="standalone-desc">Log a standalone row into the active table.</span>
+                        </div>
+                    </button>
+                </div>
+            </main>
+            <footer class="modal-footer choice-modal-footer-padding">
+                <button class="btn-secondary choice-close-btn-layout" onclick="closeChoiceModal()">Cancel</button>
             </footer>
         </div>
     </div>
