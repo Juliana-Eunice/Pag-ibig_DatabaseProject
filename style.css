@@ -41,8 +41,9 @@ body {
 .control-sidebar { width: 300px; background-color: #ffffff; border-right: 1px solid var(--grid-borders); padding: 35px 20px; box-sizing: border-box; }
 .brand-logo-container { display: flex; align-items: center; gap: 12px; color: var(--pagibig-blue); }
 .brand-icon { font-size: 36px; font-weight: bold; color: var(--pagibig-blue); }
+
 .brand-text h2 { margin: 0; font-size: 21px; font-weight: 800; letter-spacing: -0.5px; }
-.brand-text p { margin: 2px 0 0 0; font-size: 11px; font-weight: 600; color: var(--slate-text-light); text-transform: uppercase; letter-spacing: 0.5px; }
+.brand-text p { margin: 2px 0 0 0; font-size: 11px; font-weight: 600; color: var(--slate-text-light); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; transition: opacity 0.2s ease;}
 .sidebar-divider { height: 2px; background: linear-gradient(90deg, var(--pagibig-blue) 0%, var(--pagibig-gold) 100%); margin: 25px 0; border-radius: 2px; }
 
 .control-sidebar ul { list-style: none; padding: 0; margin: 0; }
@@ -623,6 +624,22 @@ button { border: none; border-radius: 6px; font-weight: 600; cursor: pointer; fo
     font-size: 13px;
 }
 
+/* --- ADMINISTRATIVE PORTAL LOG OUT UI COMPONENTS --- */
+#logout-menu-btn {
+    border-left: 4px solid transparent;
+    transition: background-color 0.2s ease, 
+                color 0.2s ease, 
+                padding 0.28s cubic-bezier(0.4, 0, 0.2, 1), 
+                margin 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                width 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Subtle hover interaction matching the red destructive theme */
+#logout-menu-btn:hover {
+    background-color: #dc2626 !important;
+    color: #ffffff !important;
+}
+
 /* --- COLLAPSIBLE SIDEBAR STRUCTURAL SYSTEM --- */
 
 /* Action Button Layout Header */
@@ -650,96 +667,275 @@ button { border: none; border-radius: 6px; font-weight: 600; cursor: pointer; fo
     color: var(--pagibig-blue);
 }
 
-/* Master Base Alignment Transitions */
-.control-sidebar {
-    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+/* --- SPECIAL FOOTER BUTTONS STYLING --- */
+/* --- SPECIAL FOOTER BUTTONS STYLING (MATCHED TO MINIMIZED COLORS) --- */
+
+/* 1. System Help Desk - Constant Soft Blue Background */
+#help-menu-btn {
+    margin-top: 20px;
+    background-color: #f0f4f8 !important;
+    color: var(--pagibig-blue) !important;
 }
 
-/* Target the layout drawer container forcefully through the wrapper id chain */
+/* Inherit text coloring to its internal span description */
+#help-menu-btn span {
+    color: var(--pagibig-blue) !important;
+}
+
+/* Invert colors to solid blue block on mouse hover */
+#help-menu-btn:hover {
+    background-color: var(--pagibig-blue) !important;
+    color: #ffffff !important;
+}
+#help-menu-btn:hover span {
+    color: #ffffff !important;
+}
+
+/* 2. Log Out Session - Constant Soft Red Background */
+#logout-menu-btn {
+    margin-top: auto; /* Keeps the logout block pinned to the absolute bottom */
+    background-color: #fef2f2 !important;
+    color: #dc2626 !important;
+}
+
+/* Inherit text coloring to its internal span description */
+#logout-menu-btn span {
+    color: #dc2626 !important;
+}
+
+/* Invert colors to solid red block on mouse hover */
+#logout-menu-btn:hover {
+    background-color: #dc2626 !important;
+    color: #ffffff !important;
+}
+#logout-menu-btn:hover span {
+    color: #ffffff !important;
+}
+
+/* ==========================================================================
+   PERFECTED COLLAPSIBLE SIDEBAR STRUCTURAL SYSTEM
+   ========================================================================== */
+
+/* --- GLOBAL SIDEBAR BASE DEFAULTS --- */
+.control-sidebar { 
+    width: 300px; 
+    background-color: #ffffff; 
+    border-right: 1px solid var(--grid-borders); 
+    padding: 35px 20px; 
+    box-sizing: border-box; 
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    /* Hardware-accelerated transition curves */
+    transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), 
+                padding 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Base state for the upper toggle row */
+.sidebar-toggle-row {
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: 10px;
+    width: 100%;
+    box-sizing: border-box;
+}
+.sidebar-toggle-row .sidebar-toggle-btn {
+    /* Push it all the way to the right side when expanded */
+    margin-left: calc(100% - 36px); /* 36px matches the width of your toggle button icon */
+    
+    /* Smoothly slide the margin change over 0.28 seconds using your hardware curve */
+    transition: margin-left 0.28s cubic-bezier(0.4, 0, 0.2, 1), 
+                background-color 0.2s ease, 
+                color 0.2s ease;
+}
+
+/* Base state for the main branding layout */
+.brand-logo-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--pagibig-blue);
+    width: 100%;
+    box-sizing: border-box;
+    padding-left: 0;
+    transition: padding-left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Baseline divider setup */
+.sidebar-divider {
+    height: 2px; 
+    background: linear-gradient(90deg, var(--pagibig-blue) 0%, var(--pagibig-gold) 100%); 
+    margin: 25px 0; 
+    border-radius: 2px;width: 100%; /* Explicitly tell it to start at full width */
+    box-sizing: border-box;
+    /* 💡 ADD THIS: Smoothly animate the width, margins, and opacity over 0.28 seconds */
+    transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), 
+                margin 0.28s cubic-bezier(0.4, 0, 0.2, 1), 
+                opacity 0.28s ease;
+}
+
+/* Normal list items styling */
+#table-tabs li {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    margin-bottom: 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--slate-text-light);
+    width: 100%;
+    box-sizing: border-box;
+    border-left: 4px solid transparent; 
+    white-space: nowrap;       /* Forces the button labels to strictly stay on one line */
+    overflow: hidden;          /* Hides the text cleanly when the sidebar is too narrow to display it */
+    transition: background-color 0.2s ease, 
+                color 0.2s ease, 
+                padding 0.28s cubic-bezier(0.4, 0, 0.2, 1), 
+                margin 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                border-radius 0.28s ease;
+}
+#table-tabs li span:not(.material-symbols-outlined) {
+    display: inline-block;
+    /* Force the text block to always render at its full structural width */
+    min-width: 200px; 
+    width: 200px;
+    flex-shrink: 0; /* Prevents the flexing grid from squeezing the text dimensions */
+    
+    /* Smooth opacity fade matching the container expansion velocity */
+    transition: opacity 0.2s ease;
+}
+
+#table-tabs li.selected {
+    background-color: var(--pagibig-blue);
+    color: #ffffff;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0, 86, 145, 0.15);
+    border-left: 4px solid var(--pagibig-gold);
+}
+
+
+/* ==========================================================================
+   MINIMIZED SIDEBAR CONFIGURATION (ASYNCHRONOUSLY ANCHORED LEFT)
+   ========================================================================== */
+
+/* 1. Base Shell Collapse */
 body .workspace-wrapper aside#main-sidebar.minimized {
     width: 88px !important;
-    padding: 25px 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
+    padding: 35px 18px !important; /* Retain identical vertical top padding */
+    align-items: flex-start !important; /* Keep items left-anchored for stable layout lines */
 }
 
-/* Force the upper toggle icon row to drop structural right float positions */
+/* 2. Top Header Toggle Button Matching Position (SLIDING VARIANT) */
 body .workspace-wrapper aside#main-sidebar.minimized .sidebar-toggle-row {
-    width: 100% !important;
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-    margin-bottom: 20px !important;
+    justify-content: flex-start !important; /* Retain left alignment stability */
+    margin-bottom: 10px !important;       
 }
 
-/* Force center the toggle click target */
-body .workspace-wrapper aside#main-sidebar.minimized .sidebar-toggle-btn {
-    margin: 0 auto !important;
+/* 💡 ADD THIS TO THE MINIMIZED SECTION: Pulls the button smoothly back to the left */
+body .workspace-wrapper aside#main-sidebar.minimized .sidebar-toggle-row .sidebar-toggle-btn {
+    margin-left: 10px !important; /* Aligns perfectly above your centralized minimized menu icons */
 }
 
-/* Force center the brand container row */
+/* 3. Corporate Logo Placement Alignment & Fixed Spacing Gap */
 body .workspace-wrapper aside#main-sidebar.minimized .brand-logo-container {
-    width: 100% !important;
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-    margin-bottom: 15px !important;
+    justify-content: flex-start !important;
+    padding-left: 5px !important;        
+    gap: 0 !important;
 }
 
-/* Force center the corporate emblem graphic image */
 body .workspace-wrapper aside#main-sidebar.minimized .brand-logo-img {
-    margin: 0 auto !important;
-    display: block !important;
+    margin: 0 !important; 
 }
 
-/* Vaporize typography nodes and dividers instantly */
+/* 4. Hide structural descriptions and text tags safely */
 body .workspace-wrapper aside#main-sidebar.minimized .brand-text,
+body .workspace-wrapper aside#main-sidebar.minimized #table-tabs li span:not(.material-symbols-outlined) {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    position: absolute !important; 
+    pointer-events: none !important;
+}
+/* Unhide and re-shape the line for the minimized view */
 body .workspace-wrapper aside#main-sidebar.minimized .sidebar-divider {
-    display: none !important;
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    position: static !important;
+    width: 40px !important;       /* Shrunk down to match the icon button widths */
+    margin: 15px auto !important; /* Balanced vertical gaps, perfectly centered */
 }
 
-/* Clean out side boundaries of core menu containers */
-body .workspace-wrapper aside#main-sidebar.minimized nav,
-body .workspace-wrapper aside#main-sidebar.minimized ul {
-    width: 100% !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    padding: 0 !important;
-    margin: 0 !important;
-}
-
-/* Direct deep target pass forcing list entries into uniform centered layout cells */
-body .workspace-wrapper aside#main-sidebar.minimized ul li,
-body .workspace-wrapper aside#main-sidebar.minimized ul #help-menu-btn {
+/* 5. Clean Navigation List Blocks Transformation */
+body .workspace-wrapper aside#main-sidebar.minimized #table-tabs li,
+body .workspace-wrapper aside#main-sidebar.minimized #table-tabs #help-menu-btn,
+body .workspace-wrapper aside#main-sidebar.minimized #table-tabs #logout-menu-btn {
     width: 52px !important;
     height: 52px !important;
-    gap: 0 !important;
-    max-width: 52px !important;
     padding: 0 !important;
-    margin: 6px auto !important;
+    margin: 6px auto !important; /* Align left cleanly without 'auto' spacer blocks */
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 0 !important;
+    border-left: 4px solid transparent !important; /* Keeps selection footprint stable */
+    border-radius: 12px !important;
+
     display: flex !important;
-    justify-content: center !important; 
+    justify-content: center !important;
     align-items: center !important;
     text-align: center !important;
-    font-size: 0 !important;
     border-left: none !important;
+    box-sizing: border-box !important;
 }
 
-/* Force-center text glyph typography vector objects */
-body .workspace-wrapper aside#main-sidebar.minimized ul li .material-symbols-outlined {
+body .workspace-wrapper aside#main-sidebar.minimized #table-tabs li.selected,
+body .workspace-wrapper aside#main-sidebar.minimized #table-tabs #help-menu-btn.selected,
+body .workspace-wrapper aside#main-sidebar.minimized #table-tabs #logout-menu-btn.selected {
+    width: 52px !important;
+    height: 52px !important;
+    border-left: 4px solid var(--pagibig-gold) !important;
+    box-sizing: border-box !important;
+    
+    /* Clean up all horizontal padding and margins to secure the alignment line */
+    padding: 0 !important;
+    margin: 6px auto !important;
+}
+
+/* 6. Centered Icon Mechanics Inside Squares */
+body .workspace-wrapper aside#main-sidebar.minimized #table-tabs li .material-symbols-outlined {
     margin: 0 !important;
     padding: 0 !important;
     font-size: 24px !important;
-    display: inline-block !important;
-    text-align: center !important;
-    width: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
-/* Keep selected highlighting centered and rounded */
-body .workspace-wrapper aside#main-sidebar.minimized ul li.selected {
-    border-radius: 12px !important;
-    box-shadow: 0 4px 10px rgba(0, 86, 145, 0.2) !important;
+body .workspace-wrapper aside#main-sidebar.minimized #table-tabs li:not(.selected) .material-symbols-outlined {
+    color: var(--slate-text-light) !important;
+}
+body .workspace-wrapper aside#main-sidebar.minimized #table-tabs li.selected .material-symbols-outlined {
+    color: #ffffff !important;
+}
+
+/* ==========================================================================
+   MINIMIZED FOOTER BUTTON PATCH (RETAINS SHAPE & COLOR)
+   ========================================================================== */
+
+/* Ensure minimized help and logout button icons maintain high-contrast styling */
+body .workspace-wrapper aside#main-sidebar.minimized #table-tabs #help-menu-btn .material-symbols-outlined {
+    color: var(--pagibig-blue) !important;
+}
+
+body .workspace-wrapper aside#main-sidebar.minimized #table-tabs #logout-menu-btn .material-symbols-outlined {
+    color: #dc2626 !important;
+}
+
+/* Restore clean white icon formatting on mouse hover when minimized */
+body .workspace-wrapper aside#main-sidebar.minimized #table-tabs #help-menu-btn:hover .material-symbols-outlined,
+body .workspace-wrapper aside#main-sidebar.minimized #table-tabs #logout-menu-btn:hover .material-symbols-outlined {
+    color: #ffffff !important;
 }

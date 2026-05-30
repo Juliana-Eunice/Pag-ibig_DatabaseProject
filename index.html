@@ -32,28 +32,40 @@
             <nav>
                 <ul id="table-tabs">
                     <li class="selected" onclick="changeWorkspaceTable('member', this)">
-                        <span class="material-symbols-outlined">badge</span>Member Information
+                        <span class="material-symbols-outlined">badge</span>
+                        <span>Member Information</span>
                     </li>
                     <li onclick="changeWorkspaceTable('contact', this)">
-                        <span class="material-symbols-outlined">contact_phone</span>Contact Details
+                        <span class="material-symbols-outlined">contact_phone</span>
+                        <span>Contact Details</span>
                     </li>
                     <li onclick="changeWorkspaceTable('employment', this)">
-                        <span class="material-symbols-outlined">work</span>Current Employment
+                        <span class="material-symbols-outlined">work</span>
+                        <span>Current Employment</span>
                     </li>
                     <li onclick="changeWorkspaceTable('prevemployment', this)">
-                        <span class="material-symbols-outlined">history_edu</span>Previous Employment
+                        <span class="material-symbols-outlined">history_edu</span>
+                        <span>Previous Employment</span>
                     </li>
                     <li onclick="changeWorkspaceTable('heir', this)">
-                        <span class="material-symbols-outlined">diversity_3</span>Beneficiary Registry
+                        <span class="material-symbols-outlined">diversity_3</span>
+                        <span>Beneficiary Registry</span>
                     </li>
                     <li onclick="changeWorkspaceTable('governmentid', this)">
-                        <span class="material-symbols-outlined">fingerprint</span>Government IDs
+                        <span class="material-symbols-outlined">fingerprint</span>
+                        <span>Government IDs</span>
                     </li>
                     <li onclick="changeWorkspaceTable('employer', this)">
-                        <span class="material-symbols-outlined">corporate_fare</span>Employer Registry
+                        <span class="material-symbols-outlined">corporate_fare</span>
+                        <span>Employer Registry</span>
                     </li>
-                    <li id="help-menu-btn" onclick="openHelpModal()" style="margin-top: 20px; color: var(--pagibig-blue); background-color: #f0f4f8;">
-                        <span class="material-symbols-outlined">help</span>System Help Desk
+                    <li id="help-menu-btn" onclick="openHelpModal()">
+                        <span class="material-symbols-outlined">help</span>
+                        <span>System Help Desk</span>
+                    </li>
+                    <li id="logout-menu-btn" onclick="triggerNotificationBanner('error', 'Executing secure administrative session termination...')">
+                        <span class="material-symbols-outlined">logout</span>
+                        <span>Log Out Session</span>
                     </li>
                 </ul>
             </nav>
