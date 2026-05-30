@@ -264,7 +264,7 @@ async function buildFormWorkspace() {
                     if (['Mem_Name', 'MemCert_Name', 'Fat_Name', 'Mot_Name', 'Spouse_Name', 'Type_Country', 'Place_Birth', 'Employer_Name', 'Heir_Name'].includes(attr)) extraAttributes = 'maxlength="30"'; 
                     else if (['Citizenship', 'Email_Address'].includes(attr)) extraAttributes = 'maxlength="20"'; 
                     else if (['Perm_Address', 'Present_Address', 'Employer_Address'].includes(attr)) extraAttributes = 'maxlength="80"'; 
-                    else if (attr === 'Cell_Num') extraAttributes = 'maxlength="25"'; 
+                    else if (attr === 'Cell_Num') extraAttributes = 'maxlength="16"'; 
                     else if (['Home_Num', 'Business_Direct', 'Business_Trunk', 'Relationship'].includes(attr)) extraAttributes = 'maxlength="15"'; 
                     else if (attr === 'Facial_Features') extraAttributes = 'maxlength="25"';
                 } else if (inputType === 'number') {
