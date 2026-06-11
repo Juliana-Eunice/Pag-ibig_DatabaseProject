@@ -1059,3 +1059,63 @@ input::placeholder {
     white-space: nowrap;
     box-shadow: 0 2px 4px rgba(0, 86, 145, 0.08);
 }
+
+/* ==========================================================================
+   ✨ TOAST NOTIFICATION LAYER REFINEMENTS
+   ========================================================================== */
+
+.toast-alert-card {
+    display: flex !important;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    font-size: 13.5px;
+    font-weight: 500;
+    min-width: 320px;
+    max-width: 450px;
+    position: relative;
+    border: 1px solid transparent;
+    box-sizing: border-box;
+    animation: toastSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Style the interior material icon layout alignment */
+.toast-alert-card .material-symbols-outlined {
+    font-size: 20px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Style the message text block string */
+.toast-alert-card span:not(.material-symbols-outlined) {
+    flex: 1;
+    line-height: 1.4;
+    padding-right: 10px;
+}
+
+/* Style the interactive custom close '×' button */
+.toast-alert-card button {
+    background: none !important;
+    border: none !important;
+    color: inherit !important;
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    line-height: 1 !important;
+    opacity: 0.6;
+    transition: opacity 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toast-alert-card button:hover {
+    opacity: 1;
+}
