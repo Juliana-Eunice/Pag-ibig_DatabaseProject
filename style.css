@@ -455,104 +455,6 @@ button { border: none; border-radius: 6px; font-weight: 600; cursor: pointer; fo
     color: #7f1d1d; 
 }
 
-/* --- MULTI-STEP WIZARD UI DESIGN ELEMENTS --- */
-.wizard-progress-bar {
-    display: flex !important;
-    flex-direction: row !important; /* Forces steps side-by-side */
-    justify-content: space-between;
-    align-items: center;
-    background-color: #f8fafc;
-    padding: 16px 24px;
-    border: 1px solid var(--grid-borders);
-    border-radius: 8px;
-    grid-column: span 2; /* Ensures it stretches fully across the 2-column form */
-    margin-bottom: 24px;
-    position: relative;
-    box-sizing: border-box;
-    width: 100% !important;
-}
-
-/* Horizontal background line behind circles */
-.wizard-progress-bar::before {
-    content: '';
-    position: absolute;
-    top: 32px; /* Centers the track perfectly behind the icon bubbles */
-    left: 40px;
-    right: 40px;
-    height: 2px;
-    background-color: #e2e8f0;
-    z-index: 1;
-}
-
-.wizard-step-indicator {
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--slate-text-light);
-    text-transform: uppercase;
-    letter-spacing: 0.75px;
-    display: flex !important;
-    flex-direction: column !important; /* Stacks the icon directly on top of its own label */
-    align-items: center;
-    gap: 8px;
-    position: relative;
-    z-index: 2;
-    background-color: #f8fafc;
-    padding: 0 8px;
-    flex: 1;
-    text-align: center;
-}
-
-/* Styled stepper dots */
-.wizard-step-indicator .material-symbols-outlined {
-    font-size: 18px;
-    background-color: #ffffff;
-    border: 2px solid #cbd5e1;
-    border-radius: 50%;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #64748b;
-    transition: all 0.2s ease;
-    font-variation-settings: 'FILL' 1;
-}
-
-/* Active State */
-.wizard-step-indicator.active-step {
-    color: var(--pagibig-blue);
-}
-.wizard-step-indicator.active-step .material-symbols-outlined {
-    border-color: var(--pagibig-blue);
-    background-color: var(--pagibig-blue);
-    color: #ffffff;
-    box-shadow: 0 0 0 4px rgba(0, 86, 145, 0.15);
-}
-
-/* Completed State */
-.wizard-step-indicator.completed-step {
-    color: #166534;
-}
-.wizard-step-indicator.completed-step .material-symbols-outlined {
-    border-color: #166534;
-    background-color: #f0fdf4;
-    color: #166534;
-}
-
-.inline-action-notice {
-    background-color: #eff6ff;
-    border: 1px solid #bfdbfe;
-    padding: 12px 16px;
-    border-radius: 6px;
-    font-size: 13px;
-    color: #1e40af;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    grid-column: span 2;
-    margin-bottom: 10px;
-}
-
 /* --- UNIFIED CREATION CHOICE MODAL STYLES --- */
 .choice-modal-card-width {
     width: 460px;
@@ -938,4 +840,177 @@ body .workspace-wrapper aside#main-sidebar.minimized #table-tabs #logout-menu-bt
 body .workspace-wrapper aside#main-sidebar.minimized #table-tabs #help-menu-btn:hover .material-symbols-outlined,
 body .workspace-wrapper aside#main-sidebar.minimized #table-tabs #logout-menu-btn:hover .material-symbols-outlined {
     color: #ffffff !important;
+}
+
+/* --- WIZARD REQUIRED FIELDS ASTERISK MARKER --- */
+.required-asterisk {
+    color: #ef4444;
+    font-weight: 700;
+    font-size: 13px;
+    margin-left: 2px;
+}
+
+/* --- SYSTEM RADIO BUTTON GROUP INLINE WRAPPERS --- */
+.radio-group-container {
+    display: flex;
+    flex-direction: row !important;
+    align-items: center;
+    gap: 24px;
+    padding: 10px 4px;
+    box-sizing: border-box;
+}
+
+.radio-inline-label {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: var(--slate-text-dark) !important;
+    cursor: pointer;
+    text-transform: none !important;
+    margin: 0 !important;
+}
+
+.radio-inline-label input[type="radio"] {
+    width: 18px !important;
+    height: 18px !important;
+    cursor: pointer;
+    margin: 0;
+}
+
+/* --- MULTI-ENTRY DATA TRANSACTION CACHE MANAGEMENT BLOCKS --- */
+.wizard-array-actions-block {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    background-color: #f8fafc;
+    border: 1px dashed var(--grid-borders);
+    padding: 14px 18px;
+    border-radius: 8px;
+    box-sizing: border-box;
+    gap: 12px;
+}
+
+.wizard-array-actions-block button {
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+input::placeholder {
+    color: rgba(71, 85, 105, 0.5); /* 50% opacity slate blue */
+}
+
+/* ==========================================================================
+   PERFECTED UI STEPPER CONNECTED LINE SYSTEM 
+   ========================================================================== */
+
+.wizard-progress-bar {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between;
+    align-items: flex-start;
+    background-color: #ffffff; /* Replaced default grey frame with a clean borderless profile */
+    padding: 10px 0 28px 0;
+    grid-column: span 2; 
+    margin-bottom: 20px;
+    box-sizing: border-box;
+    width: 100% !important;
+}
+
+.wizard-step-indicator {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center;
+    position: relative;
+    flex: 1;
+    text-align: center;
+}
+
+/* --- THE CONNECTING TIMELINE SEGMENT TRACKS --- */
+.wizard-step-indicator:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 15px; /* Aligns perfectly with the center height of your 30px icon wrapper */
+    left: calc(50% + 15px); /* Starts right from the right edge of the current circle */
+    width: calc(100% - 30px); /* Spans completely to the next circle component wrapper */
+    height: 3px;
+    background-color: #e2e8f0; /* Default neutral gray connecting track line */
+    z-index: 1;
+    transition: background-color 0.25s ease;
+}
+
+/* If a step is completed, light up its trailing track line to your signature Pag-IBIG blue */
+.wizard-step-indicator.completed-step::after {
+    background-color: var(--pagibig-blue) !important;
+}
+
+/* --- ICON WRAPPERS SHAPING ENGINE --- */
+.step-icon-wrapper {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: #e2e8f0; /* Default upcoming circle color background */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 2; /* Sits cleanly on top of line tracks */
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.step-icon-wrapper .material-symbols-outlined {
+    font-size: 16px !important;
+    font-weight: bold !important;
+    color: #94a3b8; /* Muted internal symbol default color */
+    background: none !important;
+    border: none !important;
+    width: auto !important;
+    height: auto !important;
+}
+
+/* --- TYPOGRAPHY TEXT DISPLAY LABELS --- */
+.step-label-text {
+    font-size: 11px;
+    font-weight: 700;
+    color: #94a3b8; /* Default upcoming description label color state */
+    text-transform: uppercase;
+    letter-spacing: 0.75px;
+    margin-top: 10px;
+    transition: color 0.25s ease;
+}
+
+/* ==========================================================================
+   DYNAMIC STATE SPECIFIC STYLES MODIFIERS
+   ========================================================================== */
+
+.wizard-step-indicator.active-step .step-icon-wrapper {
+    background-color: #ffffff !important;
+    border: 3px solid var(--pagibig-blue) !important;
+    box-sizing: border-box;
+}
+
+.wizard-step-indicator.active-step .step-icon-wrapper .material-symbols-outlined {
+    display: none !important; /* Fully hides the icon text placeholder so the active step stays a clean hollow ring */
+}
+
+.wizard-step-indicator.active-step .step-label-text {
+    color: var(--pagibig-blue) !important; /* Bold blue highlight label */
+}
+
+.wizard-step-indicator.completed-step .step-icon-wrapper {
+    background-color: var(--pagibig-blue) !important;
+    border: none !important;
+}
+
+.wizard-step-indicator.completed-step .step-icon-wrapper .material-symbols-outlined {
+    color: #ffffff !important; /* White check icon */
+    font-variation-settings: 'FILL' 0, 'wght' 700;
+}
+
+.wizard-step-indicator.completed-step .step-label-text {
+    color: var(--pagibig-blue) !important; /* Keeps labels readable and matching */
 }
