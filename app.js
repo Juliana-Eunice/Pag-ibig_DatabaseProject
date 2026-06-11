@@ -626,6 +626,10 @@ async function commitSaveTransaction() {
     let requiredFieldsMissing = false;
     let missingFieldLabels = []; 
     
+    // --- 💡 MONITOR ALIVE OFW SELECTION STATUS ---
+    const selectedSubtypeField = document.getElementById('attr-Mem_Subtype');
+    const isCurrentlyOfw = selectedSubtypeField && selectedSubtypeField.value.toUpperCase().includes('OFW');
+    
     tableStructures[activeTable].forEach(attr => {
         if (['First_time', 'Sex'].includes(attr)) {
             const checkedRadio = document.querySelector(`input[name="attr-${attr}"]:checked`);
@@ -664,13 +668,22 @@ async function commitSaveTransaction() {
             }
         }
         
-        if (requiredFieldsConfig[activeTable].includes(attr)) {
+        // --- 🔒 MODE-AWARE CONDITIONAL VALIDATION CORE ---
+        let isFieldStrictlyRequired = requiredFieldsConfig[activeTable].includes(attr);
+        
+        // Dynamically append requirement rules if the member profile is an active OFW
+        if (activeTable === 'member' && isCurrentlyOfw && ['Type_Work', 'Type_Country'].includes(attr)) {
+            isFieldStrictlyRequired = true;
+        }
+
+        if (isFieldStrictlyRequired) {
             const targetDOMElement = document.getElementById(`attr-${attr}`) || document.querySelector(`input[name="attr-${attr}"]`);
             
             let isFieldHidden = false;
             if (targetDOMElement) {
+                // Safeguard against hidden container wrappers
                 const layoutWrapper = targetDOMElement.closest('#grid-row-wrapper-Type_Work, #grid-row-wrapper-Type_Country');
-                if (layoutWrapper && layoutWrapper.style.display === 'none') {
+                if (layoutWrapper && (layoutWrapper.style.display === 'none' || layoutWrapper.style.getPropertyValue('display') === 'none')) {
                     isFieldHidden = true;
                 }
             } else if (!isWizardMode) {
@@ -718,11 +731,11 @@ async function commitSaveTransaction() {
             wizardMultiEntryStore.governmentid = dataPayload;
             advanceWizardStepEngine(); 
         }
-        return; // Safe wizard step fallback exit point
+        return; 
     }
 
     // ==========================================================================
-    // 🔀 PATH 2: SINGLE TABLE MODE TRACK (DIRECT LIVE LIVE REST API INSERT)
+    // 🔀 PATH 2: SINGLE TABLE MODE TRACK (DIRECT LIVE REST API INSERT)
     // ==========================================================================
     const isEditMode = workingRecordId !== null;
     const targetUrl = isEditMode ? `${API_BASE}/update/${activeTable}?${workingRecordId}` : `${API_BASE}/create/${activeTable}`;
@@ -1015,12 +1028,24 @@ function evaluateOfwFieldsVisibility(selectedSubtype) {
     
     if (!rowWork || !rowCountry) return;
 
+    // Grab the actual text label elements above the inputs
+    const labelWork = rowWork.querySelector('label');
+    const labelCountry = rowCountry.querySelector('label');
+
     if (selectedSubtype && selectedSubtype.toUpperCase().includes('OFW')) {
         rowWork.style.display = "flex";
         rowCountry.style.display = "flex";
+        
+        // Dynamic Frontend Alert: Append the red asterisk to the labels in the UI
+        if (labelWork) labelWork.innerHTML = `Type Work <span class="required-asterisk">*</span>`;
+        if (labelCountry) labelCountry.innerHTML = `Type Country <span class="required-asterisk">*</span>`;
     } else {
         rowWork.style.display = "none";
         rowCountry.style.display = "none";
+
+        // Remove the asterisks when hidden or non-applicable
+        if (labelWork) labelWork.innerHTML = `Type Work`;
+        if (labelCountry) labelCountry.innerHTML = `Type Country`;
 
         const inputWork = document.getElementById('attr-Type_Work');
         const inputCountry = document.getElementById('attr-Type_Country');
