@@ -1,3 +1,14 @@
+(function enforcePortalSecurityGate() {
+    // Check both local permanent and temporary session slots
+    const isSessionValid = sessionStorage.getItem('isAdminAuthenticated') === 'true';
+    const isPermanentValid = localStorage.getItem('isAdminAuthenticated') === 'true';
+    
+    if (!isSessionValid && !isPermanentValid) {
+        // Evict unauthorized URL entries instantly if both checks fail
+        window.location.replace("login.html");
+    }
+})();
+
 const API_BASE = 'http://localhost:3000/api';
 let activeTable = 'member'; 
 let workingRecordId = null; 
@@ -1066,4 +1077,32 @@ function toggleSidebarMenuLayout() {
     } else {
         toggleIcon.innerText = 'menu_open';
     }
+}
+
+function executeAdministrativeSessionTermination() {
+    const cautionMessage = "Executing secure administrative session termination. You will be redirected back to the credential authorization page. Do you wish to proceed?";
+    
+    executeProtectedConfirmationPrompt(cautionMessage, () => {
+        // 💡 Clear out BOTH verification passes cleanly!
+        sessionStorage.removeItem('isAdminAuthenticated');
+        localStorage.removeItem('isAdminAuthenticated');
+
+        // Flush client-side wizard transaction state buffers
+        isWizardMode = false;
+        wizardPrimaryTrackingKey = null;
+        if (wizardMultiEntryStore) {
+            wizardMultiEntryStore.member = null;
+            wizardMultiEntryStore.contact = null;
+            wizardMultiEntryStore.employment = [];
+            wizardMultiEntryStore.prevemployment = [];
+            wizardMultiEntryStore.heir = [];
+            wizardMultiEntryStore.governmentid = null;
+        }
+
+        triggerNotificationBanner('error', "Terminating session keys...");
+
+        setTimeout(() => {
+            window.location.replace("login.html");
+        }, 800); 
+    });
 }
