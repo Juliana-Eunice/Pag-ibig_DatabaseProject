@@ -1138,3 +1138,31 @@ input::placeholder {
     font-size: 14px !important;
     font-weight: bold !important;
 }
+
+.toast-alert-card {
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08) !important;
+    border: 1px solid transparent;
+}
+
+/* 🛑 Error State: Uses the exact background, border, and text hex values of your .btn-danger buttons */
+.toast-alert-card.error {
+    background-color: #fff5f5 !important;
+    border-color: #fecaca !important;
+    color: #ef4444 !important;
+}
+
+/* Success State: Uses a clean, contrasting corporate emerald verification look */
+.toast-alert-card.success {
+    background-color: #f0fdf4 !important;
+    border-color: #bbf7d0 !important;
+    color: #166534 !important;
+}
+
+/* Ensure inside icons and interactive close text elements borrow text colors accurately */
+.toast-alert-card .material-symbols-outlined,
+.toast-alert-card span,
+.toast-alert-card button {
+    color: inherit !important;
+}

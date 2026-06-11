@@ -853,8 +853,10 @@ async function commitSaveTransaction() {
     let missingFieldLabels = [];
 
     // ==========================================================================
-    // 💡 FIXED: CLEAN WIZARD DATA EXTRACTION FIELD VALIDATOR
+    // 🔒 FIXED: ACCURATE DATA VALIDATION ENGINE (PREVENTS ACCIDENTAL SKIPS)
     // ==========================================================================
+    const isMultiRowTable = ['employment', 'prevemployment', 'heir'].includes(activeTable);
+
     for (let rowId = 0; rowId < loopBounds; rowId++) {
         tableStructures[activeTable].forEach(attr => {
             if (attr === 'Pagibig_ID' && wizardCurrentStepIndex > 0) return; 
@@ -871,27 +873,31 @@ async function commitSaveTransaction() {
                 }
 
                 if (isMissing) {
-                    const rowSiblingIds = tableStructures[activeTable].filter(k => k !== 'Pagibig_ID' && k !== 'Heir_Code');
-                    const isEntireRowUntouched = rowSiblingIds.every(k => {
-                        const siblingDomId = loopBounds === 1 ? `attr-${k}` : `attr-${k}-${rowId}`;
-                        if (['First_time', 'Sex'].includes(k)) {
-                            return !document.querySelector(`input[name="name-${siblingDomId}"]:checked`);
-                        }
-                        const siblingField = document.getElementById(siblingDomId);
-                        return !siblingField || !siblingField.value;
-                    });
+                    // 💡 FIXED: Only evaluate empty-row bypasses if it's an actual repeated table set
+                    let shouldBypassValidation = false;
+                    
+                    if (isMultiRowTable) {
+                        const rowSiblingIds = tableStructures[activeTable].filter(k => k !== 'Pagibig_ID' && k !== 'Heir_Code' && k !== 'Employer_ID');
+                        const isEntireRowUntouched = rowSiblingIds.every(k => {
+                            const siblingDomId = loopBounds === 1 ? `attr-${k}` : `attr-${k}-${rowId}`;
+                            if (['First_time', 'Sex'].includes(k)) {
+                                return !document.querySelector(`input[name="name-${siblingDomId}"]:checked`);
+                            }
+                            const siblingField = document.getElementById(siblingDomId);
+                            return !siblingField || !siblingField.value;
+                        });
+                        
+                        // If it's a repeated row block and completely blank, it's safe to bypass
+                        if (isEntireRowUntouched) shouldBypassValidation = true;
+                    }
 
-                    if (!isEntireRowUntouched) {
+                    // If it's a standard single-entry step, or a row that was partially filled out, throw the error banner
+                    if (!shouldBypassValidation) {
                         requiredFieldsMissing = true;
                         
-                        // 💡 Check if this is an actual multi-row array table
-                        const isMultiRowTable = ['employment', 'prevemployment', 'heir'].includes(activeTable);
-                        
                         if (isMultiRowTable && loopBounds > 1) {
-                            // Only append row numbers if there are actually multiple rows active
                             missingFieldLabels.push(`${attr.replace(/_/g, ' ')} (Row #${rowId + 1})`);
                         } else {
-                            // Keep it completely clean for single form sections like Member or Contact info!
                             missingFieldLabels.push(attr.replace(/_/g, ' '));
                         }
                     }
@@ -1013,12 +1019,16 @@ function executeLedgerSearchFilter() {
 function triggerNotificationBanner(messageType, descriptionText) {
     const container = document.getElementById('toast-notification-container');
     const toastNode = document.createElement('div');
-    let themeBg = '#f0fdf4'; let themeBorder = '#bbf7d0'; let colorText = '#166534'; let icon = 'check_circle';
-    if (messageType === 'error') { themeBg = '#fef2f2'; themeBorder = '#fca5a5'; colorText = '#991b1b'; icon = 'error'; }
     
-    toastNode.className = 'toast-alert-card';
-    toastNode.style.background = themeBg; toastNode.style.borderColor = themeBorder; toastNode.style.color = colorText;
-    toastNode.innerHTML = `<span class="material-symbols-outlined">${icon}</span><span>${descriptionText}</span><button onclick="this.parentElement.remove()">&times;</button>`;
+    let icon = messageType === 'error' ? 'error' : 'check_circle';
+    
+    toastNode.className = `toast-alert-card ${messageType}`;
+    
+    toastNode.innerHTML = `
+        <span class="material-symbols-outlined">${icon}</span>
+        <span>${descriptionText}</span>
+        <button onclick="this.parentElement.remove()">&times;</button>
+    `;
     container.appendChild(toastNode);
     setTimeout(() => { if (toastNode.parentElement) toastNode.remove(); }, 4500);
 }
