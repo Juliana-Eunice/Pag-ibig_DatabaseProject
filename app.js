@@ -1,10 +1,8 @@
 (function enforcePortalSecurityGate() {
-    // Check both local permanent and temporary session slots
     const isSessionValid = sessionStorage.getItem('isAdminAuthenticated') === 'true';
     const isPermanentValid = localStorage.getItem('isAdminAuthenticated') === 'true';
     
     if (!isSessionValid && !isPermanentValid) {
-        // Evict unauthorized URL entries instantly if both checks fail
         window.location.replace("login.html");
     }
 })();
@@ -20,7 +18,14 @@ let wizardCurrentStepIndex = 0;
 let wizardPrimaryTrackingKey = null; 
 let interruptedWizardState = null;   
 
-// 💡 UPDATED: Now caches EVERY single step locally until the final submission commit
+// Dynamic Multiplier Matrix: Tracks how many input sets to clone on array steps
+let wizardStepRowMultipliers = {
+    employment: 1,
+    prevemployment: 1,
+    heir: 1
+};
+
+// Caches EVERY single step locally until the final submission commit
 let wizardMultiEntryStore = {
     member: null,
     contact: null,
@@ -84,7 +89,7 @@ function initiateNewMemberWizard() {
     wizardPrimaryTrackingKey = null;
     interruptedWizardState = null;
     
-    // Clear ALL multi-entry tracking objects to prevent trailing data residue leaks
+    wizardStepRowMultipliers = { employment: 1, prevemployment: 1, heir: 1 };
     wizardMultiEntryStore.member = null;
     wizardMultiEntryStore.contact = null;
     wizardMultiEntryStore.employment = [];
@@ -106,28 +111,13 @@ function clearFormCache() {
         isWizardMode = false;
         wizardPrimaryTrackingKey = null;
         interruptedWizardState = null;
-        
-        // Wipe caching models clear on standalone dismissals
+        wizardStepRowMultipliers = { employment: 1, prevemployment: 1, heir: 1 };
         wizardMultiEntryStore.member = null;
         wizardMultiEntryStore.contact = null;
         wizardMultiEntryStore.employment = [];
         wizardMultiEntryStore.prevemployment = [];
         wizardMultiEntryStore.heir = [];
         wizardMultiEntryStore.governmentid = null;
-    }
-    
-    tableStructures[activeTable].forEach(attr => {
-        if (['First_time', 'Sex'].includes(attr)) {
-            const radios = document.querySelectorAll(`input[name="attr-${attr}"]`);
-            radios.forEach(r => r.checked = false);
-        } else {
-            const inputField = document.getElementById(`attr-${attr}`);
-            if (inputField) inputField.value = '';
-        }
-    });
-    
-    if (!isWizardMode) {
-        document.getElementById('modal-title-intent').innerText = "Add Direct Transaction Log Entry";
     }
 }
 
@@ -138,7 +128,6 @@ function terminateWizardSession() {
     closeCrudModal();
 }
 
-// Generates Progress Bars and Navigation Controls for Wizard Workflows
 function injectWizardProgressIndicator() {
     const box = document.getElementById('form-grid-target');
     
@@ -179,15 +168,19 @@ function suspendWizardForEmployerFiling() {
         cachedFormData: {}
     };
     
-    tableStructures[activeTable].forEach(attr => {
-        if (['First_time', 'Sex'].includes(attr)) {
-            const checkedRadio = document.querySelector(`input[name="attr-${attr}"]:checked`);
-            if (checkedRadio) interruptedWizardState.cachedFormData[attr] = checkedRadio.value;
-        } else {
-            const field = document.getElementById(`attr-${attr}`);
-            if (field) interruptedWizardState.cachedFormData[attr] = field.value;
-        }
-    });
+    const totalMultipliers = wizardStepRowMultipliers[activeTable] || 1;
+    for (let index = 0; index < totalMultipliers; index++) {
+        tableStructures[activeTable].forEach(attr => {
+            const domId = totalMultipliers === 1 ? `attr-${attr}` : `attr-${attr}-${index}`;
+            const field = document.getElementById(domId);
+            if (field) {
+                interruptedWizardState.cachedFormData[domId] = field.value;
+            } else if (['First_time', 'Sex'].includes(attr)) {
+                const checkedRadio = document.querySelector(`input[name="name-${domId}"]:checked`);
+                if (checkedRadio) interruptedWizardState.cachedFormData[domId] = checkedRadio.value;
+            }
+        });
+    }
     
     isWizardMode = false;
     activeTable = 'employer';
@@ -222,23 +215,6 @@ async function buildFormWorkspace() {
         } catch(e) { nextEmployerId = 'E001'; }
     }
 
-    let nextHeirCode = 'H001';
-    if (activeTable === 'heir' && isNewRecord) {
-        const offset = wizardMultiEntryStore.heir.length;
-        try {
-            const response = await fetch(`${API_BASE}/table/heir`);
-            const rows = await response.json();
-            let highestHeirNum = 0;
-            rows.forEach(r => {
-                const match = (r.Heir_Code || '').match(/^H(\d+)$/i);
-                if (match) highestHeirNum = Math.max(highestHeirNum, parseInt(match[1], 10));
-            });
-            nextHeirCode = `H${String(highestHeirNum + 1 + offset).padStart(3, '0')}`;
-        } catch(e) { 
-            nextHeirCode = `H${String(1 + offset).padStart(3, '0')}`; 
-        }
-    }
-
     let employerOptionsHtml = '<option value="" selected disabled>-- Select Registered Employer --</option>';
     if (['employment', 'prevemployment'].includes(activeTable)) {
         try {
@@ -250,147 +226,175 @@ async function buildFormWorkspace() {
         } catch (err) { console.error(err); }
     }
 
-    tableStructures[activeTable].forEach(attr => {
-        if (attr === 'id') return;
-        let labelName = attr.replace(/_/g, ' ');
-        let inputHtml = '';
+    const renderLimitCount = isWizardMode ? (wizardStepRowMultipliers[activeTable] || 1) : 1;
+
+    for (let entryIndex = 0; entryIndex < renderLimitCount; entryIndex++) {
         
-        const isRequired = requiredFieldsConfig[activeTable].includes(attr);
-        const requiredAsterisk = isRequired ? ' <span class="required-asterisk">*</span>' : '';
+        if (renderLimitCount > 1) {
+            let sectionLabel = activeTable === 'heir' ? `Beneficiary Profile #${entryIndex + 1}` : `Employment Entry Record #${entryIndex + 1}`;
+            
+            let deleteSectionButtonHtml = entryIndex > 0 
+                ? `<button type="button" class="btn-divider-delete" onclick="evictWizardRowSetFields('${activeTable}', ${entryIndex})" title="Remove this entire row block">
+                       <span class="material-symbols-outlined">delete</span> Delete Section
+                   </button>`
+                : '';
 
-        switch (attr) {
-            case 'Occ_Stats':
-                inputHtml = `<select id="attr-${attr}"><option value="" selected disabled>-- Select Status --</option><option value="UNEMPLOYED/NOT YET EMPLOYED">UNEMPLOYED / NOT YET EMPLOYED</option><option value="EMPLOYED">EMPLOYED</option></select>`;
-                break;
-            case 'First_time':
-                inputHtml = `
-                    <div class="radio-group-container">
-                        <label class="radio-inline-label"><input type="radio" name="attr-${attr}" id="attr-${attr}-YES" value="YES"> YES</label>
-                        <label class="radio-inline-label"><input type="radio" name="attr-${attr}" id="attr-${attr}-NO" value="NO"> NO</label>
-                    </div>`;
-                break;
-            case 'Mem_Type':
-                inputHtml = `<select id="attr-${attr}" onchange="evaluateSubtypeConditionalDropdowns(this.value)"><option value="" selected disabled>-- Select Membership Type --</option><option value="MANDATORY">MANDATORY</option><option value="VOLUNTARY">VOLUNTARY</option></select>`;
-                break;
-            case 'Mem_Subtype':
-                inputHtml = `
-                    <div id="subtype-conditional-wrapper" style="width:100%;">
-                        <select id="attr-${attr}" onchange="evaluateSubtypeConditionalDropdowns(document.getElementById('attr-Mem_Type').value); evaluateOfwFieldsVisibility(this.value);">
-                            <option value="" selected disabled>-- Select Membership Type First --</option>
-                        </select>
-                    </div>`;
-                break;
-            case 'Type_Work':
-                inputHtml = `
-                    <select id="attr-${attr}">
-                        <option value="" selected disabled>-- Select Type of Work --</option>
-                        <option value="Land-based">Land-based</option>
-                        <option value="Sea-based">Sea-based</option>
-                    </select>`;
-                break;
-            case 'Type_Country':
-                inputHtml = `<input type="text" id="attr-${attr}" maxlength="30" placeholder="e.g. SINGAPORE" autocomplete="off">`;
-                break;
-            case 'Sex':
-                inputHtml = `
-                    <div class="radio-group-container">
-                        <label class="radio-inline-label"><input type="radio" name="attr-${attr}" id="attr-${attr}-M" value="M"> M</label>
-                        <label class="radio-inline-label"><input type="radio" name="attr-${attr}" id="attr-${attr}-F" value="F"> F</label>
-                    </div>`;
-                break;
-            case 'Marital_Status':
-                inputHtml = `<select id="attr-${attr}"><option value="" selected disabled>-- Select Marital Status --</option><option value="S">Single / Unmarried</option><option value="W">Widow / er</option><option value="A">Annulled</option><option value="M">Married</option><option value="LS">Legally Separated</option></select>`;
-                break;
-            case 'Frequency_Payment':
-                inputHtml = `<select id="attr-${attr}"><option value="" selected disabled>-- Select Frequency --</option><option value="Monthly">Monthly</option><option value="Quarterly">Quarterly</option></select>`;
-                break;
-            case 'Pref_Mail_Address':
-                inputHtml = `<select id="attr-${attr}"><option value="" selected disabled>-- Select Preferred Address --</option><option value="Present Home Address">Present Home Address</option><option value="Permanent Home Address">Permanent Home Address</option><option value="Employer/Business Address">Employer / Business Address</option></select>`;
-                break;
-            case 'Employer_ID':
-                if (['employment', 'prevemployment'].includes(activeTable)) {
-                    inputHtml = `<select id="attr-${attr}">${employerOptionsHtml}</select>`;
-                } else if (activeTable === 'employer') {
-                    inputHtml = `<input type="text" id="attr-${attr}" value="${isNewRecord ? nextEmployerId : ''}" disabled>`;
-                }
-                break;
-            case 'Employment_Status':
-                inputHtml = `<select id="attr-${attr}"><option value="" selected disabled>-- Select Employment Status --</option><option value="Permanent/Regular">Permanent / Regular</option><option value="Casual">Casual</option><option value="Contractual">Contractual</option><option value="Project-based">Project-based</option><option value="Part-time/Temporary">Part-time / Temporary</option></select>`;
-                break;
-            case 'Office_Assignment':
-            case 'PrevOffice_Assignment':
-                inputHtml = `<select id="attr-${attr}"><option value="" selected disabled>-- Select Office Assignment --</option><option value="Head Office">Head Office</option><option value="Branch Office">Branch Office</option></select>`;
-                break;
-            case 'Heir_Code':
-                inputHtml = `<input type="text" id="attr-${attr}" value="${isNewRecord ? nextHeirCode : ''}" disabled>`;
-                break;
-            default:
-                let inputType = 'text';
-                let extraAttributes = '';
-                let placeholderText = '';
-                const numericColumns = ['Pagibig_ID', 'Regis_num', 'Height', 'Weight', 'Monthly_Income', 'TIN_Num', 'SSS_Num', 'CRN', 'EM_Num', 'AFP_PNP_Num', 'Deped_Code'];
-                const dateColumns = ['Birth_Date', 'Date_Employed', 'Date_From', 'Date_To', 'Heir_DateBirth'];
-
-                if (numericColumns.includes(attr)) inputType = 'number';
-                if (dateColumns.includes(attr)) inputType = 'date';
-
-                if (['Mem_Name', 'Fat_Name', 'Mot_Name', 'Spouse_Name', 'MemCert_Name', 'Heir_Name'].includes(attr)) {
-                    placeholderText = 'LAST NAME, FIRST NAME MIDDLE NAME';
-                } else if (['Cell_Num', 'Home_Num', 'Business_Direct', 'Business_Trunk'].includes(attr)) {
-                    placeholderText = '+63 XXX XXXX XXX';
-                }
-
-                if (inputType === 'text') {
-                    extraAttributes = `placeholder="${placeholderText}"`;
-                    
-                    // 50 Characters: Names & Employer Names
-                    if (['Mem_Name', 'MemCert_Name', 'Fat_Name', 'Mot_Name', 'Spouse_Name', 'Heir_Name', 'Employer_Name'].includes(attr)) {
-                        extraAttributes += ' maxlength="50"'; 
-                    } 
-                    // 80 Characters: Place of Birth & Addresses
-                    else if (['Place_Birth', 'Perm_Address', 'Present_Address', 'Employer_Address'].includes(attr)) {
-                        extraAttributes += ' maxlength="80"'; 
-                    } 
-                    // 50 Characters: Facial Features
-                    else if (attr === 'Facial_Features') {
-                        extraAttributes += ' maxlength="50"';
-                    }
-                    // 30 Characters: Type Country
-                    else if (attr === 'Type_Country') {
-                        extraAttributes += ' maxlength="30"'; 
-                    } 
-                    // 15-16 Characters: Contact Strings & Relationships
-                    else if (attr === 'Cell_Num') {
-                        extraAttributes += ' maxlength="16"'; 
-                    } else if (['Home_Num', 'Business_Direct', 'Business_Trunk', 'Relationship'].includes(attr)) {
-                        extraAttributes += ' maxlength="15"'; 
-                    }
-    
-                } else if (inputType === 'number') {
-                    if (['Pagibig_ID', 'Regis_num', 'CRN', 'EM_Num'].includes(attr)) extraAttributes = 'oninput="if(this.value.length > 12) this.value = this.value.slice(0, 12);"'; 
-                    else if (attr === 'TIN_Num') extraAttributes = 'oninput="if(this.value.length > 9) this.value = this.value.slice(0, 9);"';
-                    else if (attr === 'SSS_Num') extraAttributes = 'oninput="if(this.value.length > 11) this.value = this.value.slice(0, 11);"'; 
-                    else if (['Height', 'Weight'].includes(attr)) extraAttributes = 'oninput="if(this.value.length > 3) this.value = this.value.slice(0, 3);"'; 
-                    else if (['AFP_PNP_Num', 'Deped_Code'].includes(attr)) extraAttributes = 'oninput="if(this.value.length > 6) this.value = this.value.slice(0, 6);"'; 
-                }
-
-                inputHtml = `<input type="${inputType}" id="attr-${attr}" ${extraAttributes} autocomplete="off">`;
-                break;
+            box.innerHTML += `
+                <div class="multiplier-row-divider">
+                    <span class="material-symbols-outlined">layers</span>
+                    <h4>${sectionLabel}</h4>
+                    ${deleteSectionButtonHtml}
+                </div>`;
         }
 
-        let wrapperIdHtml = '';
-        if (attr === 'Type_Work' || attr === 'Type_Country') {
-            wrapperIdHtml = ` id="grid-row-wrapper-${attr}" style="display: none;"`;
+        let nextHeirCode = `H${String(1 + entryIndex).padStart(3, '0')}`;
+        if (activeTable === 'heir' && isNewRecord) {
+            try {
+                const response = await fetch(`${API_BASE}/table/heir`);
+                const rows = await response.json();
+                let highestHeirNum = 0;
+                rows.forEach(r => {
+                    const match = (r.Heir_Code || '').match(/^H(\d+)$/i);
+                    if (match) highestHeirNum = Math.max(highestHeirNum, parseInt(match[1], 10));
+                });
+                nextHeirCode = `H${String(highestHeirNum + 1 + entryIndex).padStart(3, '0')}`;
+            } catch(e) {}
         }
 
-        box.innerHTML += `
-            <div${wrapperIdHtml}>
-                <label for="attr-${attr}">${labelName}${requiredAsterisk}</label>
-                ${inputHtml}
-            </div>`;
-    });
+        tableStructures[activeTable].forEach(attr => {
+            if (attr === 'id') return;
+            let labelName = attr.replace(/_/g, ' ');
+            let inputHtml = '';
+            
+            const isRequired = requiredFieldsConfig[activeTable].includes(attr);
+            const requiredAsterisk = isRequired ? ' <span class="required-asterisk">*</span>' : '';
+            
+            const targetDOMId = renderLimitCount === 1 ? `attr-${attr}` : `attr-${attr}-${entryIndex}`;
 
-    // Address synchronization checkbox injection logic rules
+            switch (attr) {
+                case 'Occ_Stats':
+                    inputHtml = `<select id="${targetDOMId}"><option value="" selected disabled>-- Select Status --</option><option value="UNEMPLOYED/NOT YET EMPLOYED">UNEMPLOYED / NOT YET EMPLOYED</option><option value="EMPLOYED">EMPLOYED</option></select>`;
+                    break;
+                case 'First_time':
+                    inputHtml = `
+                        <div class="radio-group-container">
+                            <label class="radio-inline-label"><input type="radio" name="name-${targetDOMId}" id="${targetDOMId}-YES" value="YES"> YES</label>
+                            <label class="radio-inline-label"><input type="radio" name="name-${targetDOMId}" id="${targetDOMId}-NO" value="NO"> NO</label>
+                        </div>`;
+                    break;
+                case 'Mem_Type':
+                    inputHtml = `<select id="${targetDOMId}" onchange="evaluateSubtypeConditionalDropdowns(this.value)"><option value="" selected disabled>-- Select Membership Type --</option><option value="MANDATORY">MANDATORY</option><option value="VOLUNTARY">VOLUNTARY</option></select>`;
+                    break;
+                case 'Mem_Subtype':
+                    inputHtml = `
+                        <div id="subtype-conditional-wrapper">
+                            <select id="${targetDOMId}" onchange="evaluateSubtypeConditionalDropdowns(document.getElementById('attr-Mem_Type').value); evaluateOfwFieldsVisibility(this.value);">
+                                <option value="" selected disabled>-- Select Membership Type First --</option>
+                            </select>
+                        </div>`;
+                    break;
+                case 'Type_Work':
+                    inputHtml = `
+                        <select id="${targetDOMId}">
+                            <option value="" selected disabled>-- Select Type of Work --</option>
+                            <option value="Land-based">Land-based</option>
+                            <option value="Sea-based">Sea-based</option>
+                        </select>`;
+                    break;
+                case 'Type_Country':
+                    inputHtml = `<input type="text" id="${targetDOMId}" maxlength="30" placeholder="e.g. SINGAPORE" autocomplete="off">`;
+                    break;
+                case 'Sex':
+                    inputHtml = `
+                        <div class="radio-group-container">
+                            <label class="radio-inline-label"><input type="radio" name="name-${targetDOMId}" id="${targetDOMId}-M" value="M"> M</label>
+                            <label class="radio-inline-label"><input type="radio" name="name-${targetDOMId}" id="${targetDOMId}-F" value="F"> F</label>
+                        </div>`;
+                    break;
+                case 'Marital_Status':
+                    inputHtml = `<select id="${targetDOMId}"><option value="" selected disabled>-- Select Marital Status --</option><option value="S">Single / Unmarried</option><option value="W">Widow / er</option><option value="A">Annulled</option><option value="M">Married</option><option value="LS">Legally Separated</option></select>`;
+                    break;
+                case 'Frequency_Payment':
+                    inputHtml = `<select id="${targetDOMId}"><option value="" selected disabled>-- Select Frequency --</option><option value="Monthly">Monthly</option><option value="Quarterly">Quarterly</option></select>`;
+                    break;
+                case 'Pref_Mail_Address':
+                    inputHtml = `<select id="${targetDOMId}"><option value="" selected disabled>-- Select Preferred Address --</option><option value="Present Home Address">Present Home Address</option><option value="Permanent Home Address">Permanent Home Address</option><option value="Employer/Business Address">Employer / Business Address</option></select>`;
+                    break;
+                case 'Employer_ID':
+                    if (['employment', 'prevemployment'].includes(activeTable)) {
+                        inputHtml = `<select id="${targetDOMId}">${employerOptionsHtml}</select>`;
+                    } else if (activeTable === 'employer') {
+                        inputHtml = `<input type="text" id="${targetDOMId}" value="${isNewRecord ? nextEmployerId : ''}" disabled>`;
+                    }
+                    break;
+                case 'Employment_Status':
+                    inputHtml = `<select id="${targetDOMId}"><option value="" selected disabled>-- Select Employment Status --</option><option value="Permanent/Regular">Permanent / Regular</option><option value="Casual">Casual</option><option value="Contractual">Contractual</option><option value="Project-based">Project-based</option><option value="Part-time/Temporary">Part-time / Temporary</option></select>`;
+                    break;
+                case 'Office_Assignment':
+                case 'PrevOffice_Assignment':
+                    inputHtml = `<select id="${targetDOMId}"><option value="" selected disabled>-- Select Office Assignment --</option><option value="Head Office">Head Office</option><option value="Branch Office">Branch Office</option></select>`;
+                    break;
+                case 'Heir_Code':
+                    inputHtml = `<input type="text" id="${targetDOMId}" value="${isNewRecord ? nextHeirCode : ''}" disabled>`;
+                    break;
+                default:
+                    let inputType = 'text';
+                    let extraAttributes = '';
+                    let placeholderText = '';
+                    const numericColumns = ['Pagibig_ID', 'Regis_num', 'Height', 'Weight', 'Monthly_Income', 'TIN_Num', 'SSS_Num', 'CRN', 'EM_Num', 'AFP_PNP_Num', 'Deped_Code'];
+                    const dateColumns = ['Birth_Date', 'Date_Employed', 'Date_From', 'Date_To', 'Heir_DateBirth'];
+
+                    if (numericColumns.includes(attr)) inputType = 'number';
+                    if (dateColumns.includes(attr)) inputType = 'date';
+
+                    if (['Mem_Name', 'Fat_Name', 'Mot_Name', 'Spouse_Name', 'MemCert_Name', 'Heir_Name'].includes(attr)) {
+                        placeholderText = 'LAST NAME, FIRST NAME MIDDLE NAME';
+                    } else if (['Cell_Num', 'Home_Num', 'Business_Direct', 'Business_Trunk'].includes(attr)) {
+                        placeholderText = '+63 XXX XXXX XXX';
+                    }
+
+                    if (inputType === 'text') {
+                        if (attr !== 'Pagibig_ID') {
+                            extraAttributes = `placeholder="${placeholderText}"`;
+                        }
+                        if (['Mem_Name', 'MemCert_Name', 'Fat_Name', 'Mot_Name', 'Spouse_Name', 'Heir_Name', 'Employer_Name'].includes(attr)) {
+                            extraAttributes += ' maxlength="50"'; 
+                        } else if (['Place_Birth', 'Perm_Address', 'Present_Address', 'Employer_Address'].includes(attr)) {
+                            extraAttributes += ' maxlength="80"'; 
+                        } else if (attr === 'Facial_Features') {
+                            extraAttributes += ' maxlength="50"';
+                        } else if (attr === 'Type_Country') {
+                            extraAttributes += ' maxlength="30"'; 
+                        } else if (attr === 'Cell_Num') {
+                            extraAttributes += ' maxlength="16"'; 
+                        } else if (['Home_Num', 'Business_Direct', 'Business_Trunk', 'Relationship'].includes(attr)) {
+                            extraAttributes += ' maxlength="15"'; 
+                        }
+                    } else if (inputType === 'number') {
+                        if (['Pagibig_ID', 'Regis_num', 'CRN', 'EM_Num'].includes(attr)) extraAttributes = 'oninput="if(this.value.length > 12) this.value = this.value.slice(0, 12);"'; 
+                        else if (attr === 'TIN_Num') extraAttributes = 'oninput="if(this.value.length > 9) this.value = this.value.slice(0, 9);"';
+                        else if (attr === 'SSS_Num') extraAttributes = 'oninput="if(this.value.length > 11) this.value = this.value.slice(0, 11);"'; 
+                        else if (['Height', 'Weight'].includes(attr)) extraAttributes = 'oninput="if(this.value.length > 3) this.value = this.value.slice(0, 3);"'; 
+                        else if (['AFP_PNP_Num', 'Deped_Code'].includes(attr)) extraAttributes = 'oninput="if(this.value.length > 6) this.value = this.value.slice(0, 6);"'; 
+                    }
+
+                    inputHtml = `<input type="${inputType}" id="${targetDOMId}" ${extraAttributes} autocomplete="off">`;
+                    break;
+            }
+
+            let wrapperIdHtml = '';
+            if (attr === 'Type_Work' || attr === 'Type_Country') {
+                wrapperIdHtml = ` id="grid-row-wrapper-${attr}" style="display: none;"`;
+            }
+
+            box.innerHTML += `
+                <div${wrapperIdHtml}>
+                    <label for="${targetDOMId}">${labelName}${requiredAsterisk}</label>
+                    ${inputHtml}
+                </div>`;
+        });
+    }
+
     if (activeTable === 'contact') {
         const addressMirrorCheckboxHtml = `
             <div style="grid-column: span 2; flex-direction: row !important; align-items: center; gap: 8px; margin: -4px 0 6px 0;">
@@ -402,7 +406,6 @@ async function buildFormWorkspace() {
         const presentAddrField = document.getElementById('attr-Present_Address').parentElement;
         presentAddrField.insertAdjacentHTML('beforebegin', addressMirrorCheckboxHtml);
         
-        // Listen to active input typings on permanent address field to sync real-time changes
         const permAddrInput = document.getElementById('attr-Perm_Address');
         if (permAddrInput) {
             permAddrInput.addEventListener('input', () => {
@@ -414,6 +417,9 @@ async function buildFormWorkspace() {
         }
     }
 
+    // ==========================================================================
+    // 🔒 TIMELINE STEPPER FOOTER MANAGEMENT LAYERS
+    // ==========================================================================
     if (isWizardMode) {
         injectWizardProgressIndicator();
         
@@ -424,8 +430,8 @@ async function buildFormWorkspace() {
                         <span class="material-symbols-outlined">corporate_fare</span>
                         <span>Can't find the registered business listed in the drop-down selector?</span>
                     </div>
-                    <button type="button" class="btn-primary flex-center" style="padding: 8px 14px; font-size:12px;" onclick="suspendWizardForEmployerFiling()">
-                        <span class="material-symbols-outlined" style="font-size: 16px;">add</span> Input New Employer
+                    <button type="button" class="btn-primary flex-center" onclick="suspendWizardForEmployerFiling()">
+                        <span class="material-symbols-outlined">add</span> Input New Employer
                     </button>
                 </div>`;
             const progressBarElement = box.querySelector('.wizard-progress-bar');
@@ -438,13 +444,12 @@ async function buildFormWorkspace() {
         if (['employment', 'prevemployment'].includes(activeTable)) {
             wizardFooterActionsHtml += `
                 <div class="wizard-array-actions-block">
-                    <button type="button" class="btn-secondary" style="background-color: #f1f5f9; color: var(--pagibig-blue);" onclick="stageWizardArrayRowCache('${activeTable}')">+ Cache & Add Another Job</button>
-                    <button type="button" class="btn-danger" style="background-color: #fef2f2; color: #dc2626;" onclick="bypassOptionalWizardSegment('${activeTable}')">Skip This Section entirely</button>
+                    <button type="button" class="btn-secondary" onclick="incrementWizardFormRowFields('${activeTable}')">+ Cache & Add Another Job</button>
                 </div>`;
         } else if (activeTable === 'heir') {
             wizardFooterActionsHtml += `
                 <div class="wizard-array-actions-block">
-                    <button type="button" class="btn-secondary" style="background-color: #f1f5f9; color: var(--pagibig-blue);" onclick="stageWizardArrayRowCache('heir')">+ Cache & Add Another Beneficiary</button>
+                    <button type="button" class="btn-secondary" onclick="incrementWizardFormRowFields('heir')">+ Cache & Add Another Beneficiary</button>
                 </div>`;
         }
         
@@ -452,19 +457,26 @@ async function buildFormWorkspace() {
             box.insertAdjacentHTML('beforeend', `<div style="grid-column: span 2; margin-top: 10px;">${wizardFooterActionsHtml}</div>`);
         }
 
-        // 💡 NEW: Update the modal footer actions dynamically to append a Back button
         const modalFooter = document.querySelector('.modal-footer');
         if (modalFooter) {
+            const optionalTables = ['employment', 'prevemployment', 'governmentid'];
+            const isCurrentStepOptional = optionalTables.includes(activeTable);
+            
+            let skipButtonHtml = isCurrentStepOptional 
+                ? `<button class="btn-danger" style="background-color: #fef2f2; color: #dc2626; border: 1px solid #fca5a5;" onclick="bypassOptionalWizardSegment('${activeTable}')">Skip Step</button>` 
+                : '';
+
             if (wizardCurrentStepIndex > 0) {
                 modalFooter.innerHTML = `
                     <button class="btn-secondary" onclick="closeCrudModal()">Cancel</button>
-                    <button class="btn-secondary" style="margin-right: auto; background-color: #e2e8f0;" onclick="advanceWizardStepEngine('prev')">← Back</button>
+                    <button class="btn-secondary" style="margin-right: auto;" onclick="advanceWizardStepEngine('prev')">← Back</button>
+                    ${skipButtonHtml}
                     <button class="btn-primary" onclick="commitSaveTransaction()">Next Step →</button>
                 `;
             } else {
-                // Default Step 1 footer buttons mapping layout
                 modalFooter.innerHTML = `
                     <button class="btn-secondary" onclick="closeCrudModal()">Cancel</button>
+                    ${skipButtonHtml}
                     <button class="btn-primary" onclick="commitSaveTransaction()">Next Step →</button>
                 `;
             }
@@ -475,7 +487,6 @@ async function buildFormWorkspace() {
             nextButton.innerText = (wizardCurrentStepIndex === wizardSteps.length - 1) ? "Finish & Save" : "Next Step →";
         }
     } else if (activeTable === 'employer' && interruptedWizardState !== null) {
-        // 💡 NEW: Ensure that if we are adding an interrupted employer, the modal footer has its own Cancel handler!
         const modalFooter = document.querySelector('.modal-footer');
         if (modalFooter) {
             modalFooter.innerHTML = `
@@ -484,7 +495,6 @@ async function buildFormWorkspace() {
             `;
         }
     } else {
-        // Standalone Single Table Mode structural defaults reset
         const modalFooter = document.querySelector('.modal-footer');
         if (modalFooter) {
             modalFooter.innerHTML = `
@@ -494,29 +504,122 @@ async function buildFormWorkspace() {
         }
     }
 
-    const primaryIdField = document.getElementById('attr-Pagibig_ID');
+    // SAFE DATA RESTORATION FOR SINGLE-OR-MULTIPLIED NODES
+    if (isWizardMode) {
+        try {
+            const stepCacheData = wizardMultiEntryStore[activeTable];
+            if (stepCacheData) {
+                const isArrayData = Array.isArray(stepCacheData);
+                const itemsToLoad = isArrayData ? stepCacheData : [stepCacheData];
+
+                itemsToLoad.forEach((rowPayload, indexId) => {
+                    if (indexId >= renderLimitCount) return; 
+                    
+                    tableStructures[activeTable].forEach(attr => {
+                        const elementId = renderLimitCount === 1 ? `attr-${attr}` : `attr-${attr}-${indexId}`;
+                        
+                        if (['First_time', 'Sex'].includes(attr)) {
+                            const radioVal = rowPayload[attr];
+                            if (radioVal) {
+                                // 💡 Fixed: Target option inputs matching specific generated IDs
+                                const radioEl = document.getElementById(`${elementId}-${radioVal}`);
+                                if (radioEl) radioEl.checked = true;
+                            }
+                        } else {
+                            const field = document.getElementById(elementId);
+                            if (field && rowPayload[attr] !== undefined && rowPayload[attr] !== null) {
+                                if (attr === 'Mem_Type') {
+                                    field.value = rowPayload[attr];
+                                    evaluateSubtypeConditionalDropdowns(rowPayload[attr]);
+                                } else if (attr === 'Mem_Subtype') {
+                                    field.value = rowPayload[attr];
+                                    evaluateOfwFieldsVisibility(rowPayload[attr]);
+                                } else {
+                                    field.value = rowPayload[attr];
+                                }
+                            }
+                        }
+                    });
+                });
+            }
+        } catch (restorationError) {
+            console.warn("Restoration loop safely caught exceptions:", restorationError);
+        }
+    }
+
+    // LOCK DOWN AND MONITOR PAG-IBIG ID FIELD WITH NO PLACEHOLDER
+    const primaryIdField = document.getElementById('attr-Pagibig_ID') || document.getElementById('attr-Pagibig_ID-0');
     if (primaryIdField) {
         if (isWizardMode) {
             if (activeTable === 'member') {
-                // Step 1: Allow them to type the fresh ID manually
                 primaryIdField.readOnly = false;
                 primaryIdField.disabled = false;
-                
-                // If they go back or re-render, keep what they typed
                 if (wizardPrimaryTrackingKey) {
                     primaryIdField.value = wizardPrimaryTrackingKey;
                 }
             } else {
-                // Steps 2 - 6: Automatically display the ID from Step 1, but make it UNTYPABLE
-                primaryIdField.value = wizardPrimaryTrackingKey || '';
-                primaryIdField.readOnly = true;
+                for(let i=0; i<renderLimitCount; i++) {
+                    const dynamicIdField = document.getElementById(`attr-Pagibig_ID-${i}`) || document.getElementById('attr-Pagibig_ID');
+                    if(dynamicIdField) {
+                        dynamicIdField.value = wizardPrimaryTrackingKey || '';
+                        dynamicIdField.readOnly = true;
+                    }
+                }
             }
         } else {
-            // Standalone Single Table Mode: Keep it fully unlocked and editable
             primaryIdField.readOnly = false;
             primaryIdField.disabled = false;
+            primaryIdField.value = '';
         }
     }
+}
+
+// 💡 FIXED: Reads and preserves typed data from existing blocks before adding a new section pass
+function incrementWizardFormRowFields(tableKey) {
+    const loopCount = wizardStepRowMultipliers[tableKey] || 1;
+    const compiledPayloadCache = [];
+
+    // 1. Gather all inputs currently typed on the screen so we don't lose them
+    for (let rowId = 0; rowId < loopCount; rowId++) {
+        const singleRowPayload = {};
+        
+        tableStructures[tableKey].forEach(attr => {
+            const domId = loopCount === 1 ? `attr-${attr}` : `attr-${attr}-${rowId}`;
+            
+            if (['First_time', 'Sex'].includes(attr)) {
+                const checkedRadio = document.querySelector(`input[name="name-${domId}"]:checked`);
+                singleRowPayload[attr] = checkedRadio ? checkedRadio.value : '';
+            } else {
+                const inputField = document.getElementById(domId);
+                if (inputField) {
+                    let val = inputField.value;
+                    if (typeof val === 'string' && inputField.tagName.toLowerCase() === 'input' && inputField.type === 'text') {
+                        val = val.trim().toUpperCase();
+                    }
+                    singleRowPayload[attr] = val;
+                } else {
+                    singleRowPayload[attr] = '';
+                }
+            }
+        });
+
+        if (wizardPrimaryTrackingKey !== null && tableStructures[tableKey].includes('Pagibig_ID')) {
+            singleRowPayload['Pagibig_ID'] = wizardPrimaryTrackingKey;
+        }
+        
+        compiledPayloadCache.push(singleRowPayload);
+    }
+
+    // 2. Commit the active rows directly into your temporary memory store array
+    wizardMultiEntryStore[tableKey] = compiledPayloadCache;
+
+    // 3. Safe increment the field section multiplier pointer
+    wizardStepRowMultipliers[tableKey] = loopCount + 1;
+    
+    triggerNotificationBanner('success', "Appended fresh blank fields block entry line into current layer workspace section.");
+    
+    // 4. Re-render the form. The restoration engine below will fill in what we just saved!
+    buildFormWorkspace();
 }
 
 function toggleAddressMirrorSynchronization(checkboxRef) {
@@ -542,7 +645,6 @@ function closeChoiceModal() {
 
 function handleChoiceSelection(selectionType) {
     closeChoiceModal();
-    
     if (selectionType === 'wizard') {
         initiateNewMemberWizard();
     } else if (selectionType === 'single') {
@@ -552,47 +654,64 @@ function handleChoiceSelection(selectionType) {
     }
 }
 
-// Intercept array targets to build multi-record entities inside local cache memories
-function stageWizardArrayRowCache(tableKey) {
-    const currentPayload = {};
-    let fieldsAreValid = true;
-    
-    tableStructures[tableKey].forEach(attr => {
-        const field = document.getElementById(`attr-${attr}`);
-        if (field) {
-            let val = field.value;
-            if (field.type === 'text') val = val.trim().toUpperCase();
-            
-            if (requiredFieldsConfig[tableKey].includes(attr) && !val) {
-                fieldsAreValid = false;
-            }
-            currentPayload[attr] = val;
-        }
-    });
-
-    if (isWizardMode && wizardPrimaryTrackingKey !== null) {
-        currentPayload['Pagibig_ID'] = wizardPrimaryTrackingKey;
-    }
-
-    if (!fieldsAreValid) {
-        triggerNotificationBanner('error', `Validation Failed: Please fill all required fields before caching rows.`);
-        return;
-    }
-
-    wizardMultiEntryStore[tableKey].push(currentPayload);
-    triggerNotificationBanner('success', `Logged Entry stored internally! You can now log an additional record.`);
-    
-    // Refresh workspace form to increment serial keys or empty fields out safely
-    buildFormWorkspace();
-}
-
 function bypassOptionalWizardSegment(tableKey) {
     wizardMultiEntryStore[tableKey] = []; 
-    triggerNotificationBanner('success', `Skipped segment details module framework for ${tableKey}.`);
-    advanceWizardStepEngine();
+    triggerNotificationBanner('success', `Skipped module details row persistence logs for ${tableKey}.`);
+    
+    if (wizardCurrentStepIndex < wizardSteps.length - 1) {
+        wizardCurrentStepIndex++;
+        activeTable = wizardSteps[wizardCurrentStepIndex];
+        workingRecordId = null;
+        buildFormWorkspace();
+        document.getElementById('modal-title-intent').innerText = `Step ${wizardCurrentStepIndex + 1}: Unified Registration (${activeTable})`;
+    }
 }
 
 async function advanceWizardStepEngine(direction = 'next') {
+    if (direction === 'next' || direction === 'prev') {
+        const loopCount = wizardStepRowMultipliers[activeTable] || 1;
+        const compiledPayloadCache = [];
+
+        for (let rowId = 0; rowId < loopCount; rowId++) {
+            const singleRowPayload = {};
+            
+            tableStructures[activeTable].forEach(attr => {
+                const domId = loopCount === 1 ? `attr-${attr}` : `attr-${attr}-${rowId}`;
+                
+                if (['First_time', 'Sex'].includes(attr)) {
+                    // 💡 Fixed: Extract radio choices utilizing unique indexed row configurations
+                    const checkedRadio = document.querySelector(`input[name="name-${domId}"]:checked`);
+                    singleRowPayload[attr] = checkedRadio ? checkedRadio.value : '';
+                } else {
+                    const inputField = document.getElementById(domId);
+                    if (inputField) {
+                        let val = inputField.value;
+                        if (typeof val === 'string' && inputField.tagName.toLowerCase() === 'input' && inputField.type === 'text') {
+                            val = val.trim().toUpperCase();
+                        }
+                        singleRowPayload[attr] = val;
+                    } else {
+                        singleRowPayload[attr] = '';
+                    }
+                }
+            });
+
+            if (wizardPrimaryTrackingKey !== null && tableStructures[activeTable].includes('Pagibig_ID')) {
+                singleRowPayload['Pagibig_ID'] = wizardPrimaryTrackingKey;
+            }
+            
+            compiledPayloadCache.push(singleRowPayload);
+        }
+
+        if (!['employment', 'prevemployment', 'heir'].includes(activeTable)) {
+            wizardMultiEntryStore[activeTable] = compiledPayloadCache[0];
+        } else {
+            wizardMultiEntryStore[activeTable] = compiledPayloadCache.filter(rowItem => {
+                return Object.keys(rowItem).some(k => k !== 'Pagibig_ID' && k !== 'Heir_Code' && rowItem[k] !== '');
+            });
+        }
+    }
+
     if (direction === 'prev') {
         if (wizardCurrentStepIndex > 0) {
             wizardCurrentStepIndex--;
@@ -604,12 +723,10 @@ async function advanceWizardStepEngine(direction = 'next') {
         return;
     }
 
-    // Standard 'next' logic continues here...
     if (wizardCurrentStepIndex < wizardSteps.length - 1) {
         wizardCurrentStepIndex++;
         activeTable = wizardSteps[wizardCurrentStepIndex];
         workingRecordId = null;
-        
         await buildFormWorkspace();
         document.getElementById('modal-title-intent').innerText = `Step ${wizardCurrentStepIndex + 1}: Unified Registration (${activeTable})`;
     } else {
@@ -625,7 +742,6 @@ async function pushMultiEntryWizardPipeline() {
     try {
         triggerNotificationBanner('success', "Executing secure batch transaction registration upload...");
 
-        // 1. Commit Step 1: Member Profile
         if (wizardMultiEntryStore.member) {
             await fetch(`${API_BASE}/create/member`, {
                 method: 'POST',
@@ -634,7 +750,6 @@ async function pushMultiEntryWizardPipeline() {
             });
         }
 
-        // 2. Commit Step 2: Contact Details
         if (wizardMultiEntryStore.contact) {
             await fetch(`${API_BASE}/create/contact`, {
                 method: 'POST',
@@ -643,34 +758,22 @@ async function pushMultiEntryWizardPipeline() {
             });
         }
 
-        // 3. Commit Arrays: Employment history profiles
         const arrayTables = ['employment', 'prevemployment', 'heir'];
         for (let tableKey of arrayTables) {
             const recordsList = wizardMultiEntryStore[tableKey];
-            // 💡 Fix: Double check that the list contains actual objects and isn't empty or skipped
             if (recordsList && recordsList.length > 0) {
                 for (let dataRow of recordsList) {
-                    // Check if the item contains real information besides just a carryover Pagibig_ID
-                    const uniqueDataKeys = Object.keys(dataRow).filter(k => k !== 'Pagibig_ID' && k !== 'Heir_Code' && k !== 'Employer_ID');
-                    const isRowPopulated = uniqueDataKeys.some(k => dataRow[k] !== null && dataRow[k] !== '');
-                    
-                    if (isRowPopulated) {
-                        await fetch(`${API_BASE}/create/${tableKey}`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(dataRow)
-                        });
-                    }
+                    await fetch(`${API_BASE}/create/${tableKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dataRow)
+                    });
                 }
             }
         }
 
-        // 4. Commit Step 6: Government IDs (Only if actual data was typed)
         if (wizardMultiEntryStore.governmentid) {
-            // 💡 Fix: Filter out system tracker keys to see if the user filled out any identification rows manually
-            const explicitUserInputs = Object.keys(wizardMultiEntryStore.governmentid)
-                .filter(key => key !== 'Pagibig_ID');
-
+            const explicitUserInputs = Object.keys(wizardMultiEntryStore.governmentid).filter(key => key !== 'Pagibig_ID');
             const hasValidIdentificationData = explicitUserInputs.some(
                 key => wizardMultiEntryStore.governmentid[key] !== null && wizardMultiEntryStore.governmentid[key].trim() !== ""
             );
@@ -684,7 +787,6 @@ async function pushMultiEntryWizardPipeline() {
             }
         }
 
-        // Complete the pipeline and flush memory caches cleanly
         isWizardMode = false;
         activeTable = 'member';
         fetchLedgerRecords();
@@ -698,151 +800,117 @@ async function pushMultiEntryWizardPipeline() {
 }
 
 async function commitSaveTransaction() {
-    const dataPayload = {};
-    const dateColumns = ['Birth_Date', 'Date_Employed', 'Date_From', 'Date_To', 'Heir_DateBirth'];
-
-    let requiredFieldsMissing = false;
-    let missingFieldLabels = []; 
-    
-    // --- 💡 MONITOR ALIVE OFW SELECTION STATUS ---
-    const selectedSubtypeField = document.getElementById('attr-Mem_Subtype');
-    const isCurrentlyOfw = selectedSubtypeField && selectedSubtypeField.value.toUpperCase().includes('OFW');
-    
-    tableStructures[activeTable].forEach(attr => {
-        if (['First_time', 'Sex'].includes(attr)) {
-            const checkedRadio = document.querySelector(`input[name="attr-${attr}"]:checked`);
-            if (checkedRadio) {
-                dataPayload[attr] = checkedRadio.value;
+    const isEditMode = workingRecordId !== null;
+    if (!isWizardMode || (activeTable === 'employer' && interruptedWizardState !== null)) {
+        const dataPayload = {};
+        let requiredFieldsMissing = false;
+        
+        tableStructures[activeTable].forEach(attr => {
+            if (['First_time', 'Sex'].includes(attr)) {
+                // 💡 Fixed: Target direct single form radio buttons properly
+                const checkedRadio = document.querySelector(`input[name="name-attr-${attr}"]:checked`);
+                dataPayload[attr] = checkedRadio ? checkedRadio.value : '';
             } else {
-                dataPayload[attr] = '';
-            }
-        } else {
-            const inputField = document.getElementById(`attr-${attr}`);
-            if (inputField) {
-                let val = inputField.value;
-                if (typeof val === 'string' && inputField.tagName.toLowerCase() === 'input' && inputField.type === 'text') {
-                    val = val.trim().toUpperCase();
-                }
-                if (attr === 'Mem_Subtype' && inputField.value === 'OTHERS') {
-                    const customOthersField = document.getElementById('attr-Mem_Subtype-others');
-                    if (customOthersField && customOthersField.value.trim() !== '') {
-                        val = customOthersField.value.trim().toUpperCase();
+                const inputField = document.getElementById(`attr-${attr}`);
+                if (inputField) {
+                    let val = inputField.value;
+                    if (typeof val === 'string' && inputField.tagName.toLowerCase() === 'input' && inputField.type === 'text') {
+                        val = val.trim().toUpperCase();
                     }
-                }
-                if (dateColumns.includes(attr)) {
-                    if (!val) {
-                        dataPayload[attr] = '';
-                    } else {
-                        try {
-                            const parsedDate = new Date(val);
-                            dataPayload[attr] = !isNaN(parsedDate.getTime()) ? parsedDate.toISOString().split('T')[0] : val;
-                        } catch (e) { dataPayload[attr] = val; }
-                    }
-                } else {
                     dataPayload[attr] = val;
                 }
-            } else {
-                dataPayload[attr] = '';
             }
-        }
-        
-        // --- 🔒 MODE-AWARE CONDITIONAL VALIDATION CORE ---
-        let isFieldStrictlyRequired = requiredFieldsConfig[activeTable].includes(attr);
-        
-        // Dynamically append requirement rules if the member profile is an active OFW
-        if (activeTable === 'member' && isCurrentlyOfw && ['Type_Work', 'Type_Country'].includes(attr)) {
-            isFieldStrictlyRequired = true;
+            if (requiredFieldsConfig[activeTable].includes(attr) && !dataPayload[attr]) requiredFieldsMissing = true;
+        });
+
+        if (requiredFieldsMissing) {
+            triggerNotificationBanner('error', "Validation Blocked: Missing mandatory fields.");
+            return;
         }
 
-        if (isFieldStrictlyRequired) {
-            const targetDOMElement = document.getElementById(`attr-${attr}`) || document.querySelector(`input[name="attr-${attr}"]`);
-            
-            let isFieldHidden = false;
-            if (targetDOMElement) {
-                // Safeguard against hidden container wrappers
-                const layoutWrapper = targetDOMElement.closest('#grid-row-wrapper-Type_Work, #grid-row-wrapper-Type_Country');
-                if (layoutWrapper && (layoutWrapper.style.display === 'none' || layoutWrapper.style.getPropertyValue('display') === 'none')) {
-                    isFieldHidden = true;
+        const targetUrl = isEditMode ? `${API_BASE}/update/${activeTable}?${workingRecordId}` : `${API_BASE}/create/${activeTable}`;
+        try {
+            const response = await fetch(targetUrl, {
+                method: isEditMode ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dataPayload)
+            });
+            const result = await response.json();
+            if (result.success) {
+                if (activeTable === 'employer' && interruptedWizardState !== null) {
+                    cancelEmployerFilingAndReturn();
+                } else {
+                    fetchLedgerRecords(); closeCrudModal(); clearFormCache();
                 }
-            } else if (!isWizardMode) {
-                isFieldHidden = true;
+                triggerNotificationBanner('success', "Record added successfully into live schema index.");
             }
+        } catch (e) { triggerNotificationBanner('error', "Connection endpoint communications break."); }
+        return;
+    }
 
-            if (!dataPayload[attr] && !isFieldHidden) {
-                requiredFieldsMissing = true;
-                missingFieldLabels.push(attr.replace(/_/g, ' '));
+    const loopBounds = wizardStepRowMultipliers[activeTable] || 1;
+    let requiredFieldsMissing = false;
+    let missingFieldLabels = [];
+
+    // ==========================================================================
+    // 💡 FIXED: CLEAN WIZARD DATA EXTRACTION FIELD VALIDATOR
+    // ==========================================================================
+    for (let rowId = 0; rowId < loopBounds; rowId++) {
+        tableStructures[activeTable].forEach(attr => {
+            if (attr === 'Pagibig_ID' && wizardCurrentStepIndex > 0) return; 
+            if (requiredFieldsConfig[activeTable].includes(attr)) {
+                const domId = loopBounds === 1 ? `attr-${attr}` : `attr-${attr}-${rowId}`;
+                
+                let isMissing = false;
+                if (['First_time', 'Sex'].includes(attr)) {
+                    const checkedRadio = document.querySelector(`input[name="name-${domId}"]:checked`);
+                    if (!checkedRadio) isMissing = true;
+                } else {
+                    const field = document.getElementById(domId);
+                    if (!field || !field.value) isMissing = true;
+                }
+
+                if (isMissing) {
+                    const rowSiblingIds = tableStructures[activeTable].filter(k => k !== 'Pagibig_ID' && k !== 'Heir_Code');
+                    const isEntireRowUntouched = rowSiblingIds.every(k => {
+                        const siblingDomId = loopBounds === 1 ? `attr-${k}` : `attr-${k}-${rowId}`;
+                        if (['First_time', 'Sex'].includes(k)) {
+                            return !document.querySelector(`input[name="name-${siblingDomId}"]:checked`);
+                        }
+                        const siblingField = document.getElementById(siblingDomId);
+                        return !siblingField || !siblingField.value;
+                    });
+
+                    if (!isEntireRowUntouched) {
+                        requiredFieldsMissing = true;
+                        
+                        // 💡 Check if this is an actual multi-row array table
+                        const isMultiRowTable = ['employment', 'prevemployment', 'heir'].includes(activeTable);
+                        
+                        if (isMultiRowTable && loopBounds > 1) {
+                            // Only append row numbers if there are actually multiple rows active
+                            missingFieldLabels.push(`${attr.replace(/_/g, ' ')} (Row #${rowId + 1})`);
+                        } else {
+                            // Keep it completely clean for single form sections like Member or Contact info!
+                            missingFieldLabels.push(attr.replace(/_/g, ' '));
+                        }
+                    }
+                }
             }
-        }
-    });
-
-    if (isWizardMode && wizardPrimaryTrackingKey !== null && tableStructures[activeTable].includes('Pagibig_ID')) {
-        dataPayload['Pagibig_ID'] = wizardPrimaryTrackingKey;
+        });
     }
 
     if (requiredFieldsMissing) {
-        if (isWizardMode && ['employment', 'prevemployment', 'heir'].includes(activeTable)) {
-            const cacheHasItems = wizardMultiEntryStore[activeTable].length > 0;
-            if (cacheHasItems) {
-                advanceWizardStepEngine();
-                return;
-            }
-        }
-        triggerNotificationBanner('error', `Missing Required Fields: ${missingFieldLabels.join(', ')}`);
+        triggerNotificationBanner('error', `Missing Required Fields: ${[...new Set(missingFieldLabels)].join(', ')}`);
         return;
     }
 
-    // ==========================================================================
-    // 🔀 PATH 1: FULL MEMBER MULTI-STEP WIZARD MODE TRACK (CACHE & ADVANCE)
-    // ==========================================================================
-    if (isWizardMode) {
-        if (activeTable === 'member') {
-            wizardPrimaryTrackingKey = dataPayload['Pagibig_ID'];
-            wizardMultiEntryStore.member = dataPayload;
-            advanceWizardStepEngine();
-        } else if (activeTable === 'contact') {
-            wizardMultiEntryStore.contact = dataPayload;
-            advanceWizardStepEngine();
-        } else if (['employment', 'prevemployment', 'heir'].includes(activeTable)) {
-            wizardMultiEntryStore[activeTable].push(dataPayload);
-            advanceWizardStepEngine();
-        } else if (activeTable === 'governmentid') {
-            wizardMultiEntryStore.governmentid = dataPayload;
-            advanceWizardStepEngine(); 
-        }
-        return; 
+    if (activeTable === 'member') {
+        const idField = document.getElementById('attr-Pagibig_ID');
+        if (idField) wizardPrimaryTrackingKey = idField.value;
     }
 
-    // ==========================================================================
-    // 🔀 PATH 2: SINGLE TABLE MODE TRACK (DIRECT LIVE REST API INSERT)
-    // ==========================================================================
-    const isEditMode = workingRecordId !== null;
-    const targetUrl = isEditMode ? `${API_BASE}/update/${activeTable}?${workingRecordId}` : `${API_BASE}/create/${activeTable}`;
-    
-    if (!isEditMode && tableStructures[activeTable].includes('Pagibig_ID') && !dataPayload['Pagibig_ID']) {
-        triggerNotificationBanner('error', "Validation Blocked: A valid Pagibig_ID reference structure is mandatory.");
-        return;
-    }
-
-    try {
-        const response = await fetch(targetUrl, {
-            method: isEditMode ? 'PUT' : 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(dataPayload)
-        });
-        
-        const result = await response.json();
-        if (result.success) {
-            fetchLedgerRecords();
-            closeCrudModal();
-            clearFormCache();
-            triggerNotificationBanner('success', isEditMode ? "Changes saved successfully!" : "Record added successfully into this table matrix!");
-        } else {
-            triggerNotificationBanner('error', `Server Rejected: ${result.error}`);
-        }
-    } catch (networkError) {
-        console.error("Single-row insert network failure:", networkError);
-        triggerNotificationBanner('error', "Communication error with administrative endpoint database.");
-    }
+    advanceWizardStepEngine('next');
 }
 
 async function fetchLedgerRecords() {
@@ -851,21 +919,15 @@ async function fetchLedgerRecords() {
     
     const head = document.getElementById('ledger-header-target');
     const body = document.getElementById('ledger-body-target');
-    head.innerHTML = '';
-    body.innerHTML = '';
+    head.innerHTML = ''; body.innerHTML = '';
     
     const primaryColumns = Object.keys(rows[0] || {});
-    
     if (!rows || rows.length === 0 || primaryColumns.length === 0) {
         const fallbackHeaders = tableStructures[activeTable];
         let headerString = '<tr>';
         fallbackHeaders.forEach(c => headerString += `<th>${c}</th>`);
-        headerString += '<th>Actions</th></tr>'; 
-        head.innerHTML = headerString;
-
-        body.innerHTML = `<tr><td colspan="100%" style="text-align:center; padding:40px; color:#64748b; font-weight:500;">
-            No records found inside the <b>${activeTable}</b> table matrix. Click "Add Record Row" to populate your database!
-        </td></tr>`;
+        headerString += '<th>Actions</th></tr>'; head.innerHTML = headerString;
+        body.innerHTML = `<tr><td colspan="100%" style="text-align:center; padding:40px; color:#64748b;">No records found inside the active schema ledger matrix.</td></tr>`;
         return;
     }
 
@@ -875,21 +937,15 @@ async function fetchLedgerRecords() {
     head.innerHTML = headerString;
 
     rows.forEach(itemRow => {
-    let rowString = '<tr>';
-    primaryColumns.forEach(c => {
-        let cellValue = itemRow[c] !== null && itemRow[c] !== undefined ? itemRow[c] : '';
-        
-        if (typeof cellValue === 'string' && cellValue.includes('T') && !isNaN(Date.parse(cellValue))) {
-            cellValue = cellValue.split('T')[0]; 
-        }
-
-        rowString += `<td>${cellValue}</td>`;
-    });
-        
+        let rowString = '<tr>';
+        primaryColumns.forEach(c => {
+            let cellValue = itemRow[c] !== null && itemRow[c] !== undefined ? itemRow[c] : '';
+            if (typeof cellValue === 'string' && cellValue.includes('T') && !isNaN(Date.parse(cellValue))) cellValue = cellValue.split('T')[0];
+            rowString += `<td>${cellValue}</td>`;
+        });
         const keyData = {};
         primaryKeyTracker[activeTable].forEach(k => keyData[k] = itemRow[k]);
         const keyParamString = new URLSearchParams(keyData).toString();
-        
         rowString += `<td class="action-cell-btns">
             <button class="btn-secondary" onclick="stageRowModification(${JSON.stringify(itemRow).replace(/"/g, '&quot;')}, '${keyParamString}')">Edit</button>
             <button class="btn-danger" onclick="executeRowRemoval('${keyParamString}')">Delete</button>
@@ -900,113 +956,69 @@ async function fetchLedgerRecords() {
 
 function stageRowModification(rowData, keyParamString) {
     workingRecordId = keyParamString;
-    
+    isWizardMode = false; 
     buildFormWorkspace().then(() => {
         tableStructures[activeTable].forEach(attr => {
             let val = rowData[attr] !== null ? rowData[attr] : '';
-            if (typeof val === 'string' && val.includes('T') && !isNaN(Date.parse(val))) {
-                val = val.split('T')[0];
-            }
-
-            if (['First_time', 'Sex'].includes(attr)) {
-                const radioEl = document.getElementById(`attr-${attr}-${val}`);
-                if (radioEl) radioEl.checked = true;
-            } else {
+            if (typeof val === 'string' && val.includes('T') && !isNaN(Date.parse(val))) val = val.split('T')[0];
+            
+            const radioEl = document.querySelector(`input[name="name-attr-${attr}"][value="${val}"]`);
+            if (radioEl) { radioEl.checked = true; } 
+            else {
                 const inputField = document.getElementById(`attr-${attr}`);
                 if (inputField) {
                     if (attr === 'Mem_Type') {
-                        inputField.value = val;
-                        evaluateSubtypeConditionalDropdowns(val);
-                    } 
-                    else if (attr === 'Mem_Subtype') {
+                        inputField.value = val; evaluateSubtypeConditionalDropdowns(val);
+                    } else if (attr === 'Mem_Subtype') {
                         const containsOption = Array.from(inputField.options).some(opt => opt.value === val);
-                        if (containsOption) {
-                            inputField.value = val;
-                        } else if (val !== '') {
-                            inputField.value = 'OTHERS';
-                            evaluateOthersSpecificationField(inputField, 'Mem_Subtype');
+                        if (containsOption) { inputField.value = val; } 
+                        else if (val !== '') {
+                            inputField.value = 'OTHERS'; evaluateOthersSpecificationField(inputField, 'Mem_Subtype');
                             const customField = document.getElementById('attr-Mem_Subtype-others');
                             if (customField) customField.value = val;
                         }
-                    } else {
-                        inputField.value = val;
-                    }
+                    } else { inputField.value = val; }
                 }
             }
         });
-        
         document.getElementById('modal-title-intent').innerText = `Modify Record Entry`;
         openCrudModal();
     });
 }
 
 function executeRowRemoval(keyParamString) {
-    const promptString = "Warning: Deleting this transaction line row will permanently purge values from the live schema database ledger. Are you sure you want to continue?";
-    
+    const promptString = "Warning: Deleting this transaction line row will permanently purge values from the live database schema. Proceed?";
     executeProtectedConfirmationPrompt(promptString, async () => {
         const response = await fetch(`${API_BASE}/delete/${activeTable}?${keyParamString}`, { method: 'DELETE' });
         const result = await response.json();
-        if (result.success) {
-            fetchLedgerRecords();
-            triggerNotificationBanner('success', "Record removed from database.");
-        } else {
-            triggerNotificationBanner('error', `Delete operation failed: ${result.error}`);
-        }
+        if (result.success) { fetchLedgerRecords(); triggerNotificationBanner('success', "Record successfully removed."); }
     });
 }
 
-function openCrudModal() {
-    document.getElementById('modal-overlay').classList.remove('hidden');
-}
-
-function closeCrudModal() {
-    document.getElementById('modal-overlay').classList.add('hidden');
-    clearFormCache();
-}
+function openCrudModal() { document.getElementById('modal-overlay').classList.remove('hidden'); }
+function closeCrudModal() { document.getElementById('modal-overlay').classList.add('hidden'); clearFormCache(); }
 
 function executeLedgerSearchFilter() {
     const searchVal = document.getElementById('ledger-search-input').value.toLowerCase();
-    const tableBody = document.getElementById('ledger-body-target');
-    const rows = tableBody.getElementsByTagName('tr');
-
+    const rows = document.getElementById('ledger-body-target').getElementsByTagName('tr');
     for (let i = 0; i < rows.length; i++) {
-        if (rows[i].cells.length <= 1 && rows[i].querySelector('td[colspan]')) continue;
-
-        let rowContainsMatch = false;
+        let match = false;
         for (let j = 0; j < rows[i].cells.length - 1; j++) {
-            const cellText = rows[i].cells[j].textContent || rows[i].cells[j].innerText;
-            if (cellText.toLowerCase().includes(searchVal)) {
-                rowContainsMatch = true;
-                break; 
-            }
+            if (rows[i].cells[j].textContent.toLowerCase().includes(searchVal)) { match = true; break; }
         }
-
-        if (rowContainsMatch) {
-            rows[i].style.display = "";
-        } else {
-            rows[i].style.display = "none";
-        }
+        rows[i].style.display = match ? "" : "none";
     }
 }
 
 function triggerNotificationBanner(messageType, descriptionText) {
     const container = document.getElementById('toast-notification-container');
     const toastNode = document.createElement('div');
+    let themeBg = '#f0fdf4'; let themeBorder = '#bbf7d0'; let colorText = '#166534'; let icon = 'check_circle';
+    if (messageType === 'error') { themeBg = '#fef2f2'; themeBorder = '#fca5a5'; colorText = '#991b1b'; icon = 'error'; }
     
-    let backgroundTheme = '#f0fdf4'; let frameBorder = '#bbf7d0'; let headerColor = '#166534'; let statusIcon = 'check_circle';
-    if (messageType === 'error') {
-        backgroundTheme = '#fef2f2'; frameBorder = '#fca5a5'; headerColor = '#991b1b'; statusIcon = 'error';
-    }
-
     toastNode.className = 'toast-alert-card';
-    toastNode.style.cssText = `display:flex; align-items:center; gap:12px; padding:14px 18px; margin-bottom:10px; background:${backgroundTheme}; border:1px solid ${frameBorder}; border-radius:8px; box-shadow:0 10px 15px -3px rgba(0,0,0,0.05); color:${headerColor}; font-size:13.5px; font-weight:500; min-width:280px; position:relative; animation: toastSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);`;
-
-    toastNode.innerHTML = `
-        <span class="material-symbols-outlined" style="font-size:20px;">${statusIcon}</span>
-        <span style="flex:1; padding-right:15px;">${descriptionText}</span>
-        <button onclick="this.parentElement.remove()" style="background:none; border:none; color:inherit; font-size:18px; font-weight:700; cursor:pointer; padding:0; line-height:1;">&times;</button>
-    `;
-
+    toastNode.style.background = themeBg; toastNode.style.borderColor = themeBorder; toastNode.style.color = colorText;
+    toastNode.innerHTML = `<span class="material-symbols-outlined">${icon}</span><span>${descriptionText}</span><button onclick="this.parentElement.remove()">&times;</button>`;
     container.appendChild(toastNode);
     setTimeout(() => { if (toastNode.parentElement) toastNode.remove(); }, 4500);
 }
@@ -1015,12 +1027,9 @@ function executeProtectedConfirmationPrompt(promptString, affirmativeCallback) {
     const overlay = document.getElementById('confirm-modal-overlay');
     document.getElementById('confirm-modal-message').innerText = promptString;
     overlay.classList.remove('hidden');
-
     const btnYes = document.getElementById('confirm-btn-yes');
     const btnNo = document.getElementById('confirm-btn-no');
-
     const clearPromptSession = () => { overlay.classList.add('hidden'); btnYes.onclick = null; btnNo.onclick = null; };
-
     btnNo.onclick = clearPromptSession;
     btnYes.onclick = () => { affirmativeCallback(); clearPromptSession(); };
 }
@@ -1031,28 +1040,10 @@ function closeHelpModal() { document.getElementById('help-modal-overlay').classL
 function evaluateSubtypeConditionalDropdowns(selectedType) {
     const wrapper = document.getElementById('subtype-conditional-wrapper');
     if (!wrapper) return;
-
     if (selectedType === 'MANDATORY') {
-        wrapper.innerHTML = `
-            <select id="attr-Mem_Subtype" onchange="evaluateOthersSpecificationField(this, 'Mem_Subtype'); evaluateOfwFieldsVisibility(this.value);">
-                <option value="" selected disabled>-- Select Mandatory Subtype --</option>
-                <option value="EMPLOYED">EMPLOYED</option>
-                <option value="OVERSEAS FILIPINO WORKER (OFW)">OVERSEAS FILIPINO WORKER (OFW)</option>
-                <option value="SELF-EMPLOYED">SELF-EMPLOYED</option>
-                <option value="OTHERS">OTHERS (SPECIFY)</option>
-            </select>
-            <input type="text" id="attr-Mem_Subtype-others" placeholder="Please specify dynamic category..." style="display:none; margin-top:8px;">
-        `;
+        wrapper.innerHTML = `<select id="attr-Mem_Subtype" onchange="evaluateOthersSpecificationField(this, 'Mem_Subtype'); evaluateOfwFieldsVisibility(this.value);"><option value="" selected disabled>-- Select Mandatory Subtype --</option><option value="EMPLOYED">EMPLOYED</option><option value="OVERSEAS FILIPINO WORKER (OFW)">OVERSEAS FILIPINO WORKER (OFW)</option><option value="SELF-EMPLOYED">SELF-EMPLOYED</option><option value="OTHERS">OTHERS (SPECIFY)</option></select><input type="text" id="attr-Mem_Subtype-others" placeholder="Please specify dynamic category..." style="display:none; margin-top:8px;">`;
     } else if (selectedType === 'VOLUNTARY') {
-        wrapper.innerHTML = `
-            <select id="attr-Mem_Subtype" onchange="evaluateOthersSpecificationField(this, 'Mem_Subtype'); evaluateOfwFieldsVisibility(this.value);">
-                <option value="" selected disabled>-- Select Voluntary Subtype --</option>
-                <option value="EMPLOYED">EMPLOYED</option>
-                <option value="INDIVIDUAL PAYOR">INDIVIDUAL PAYOR</option>
-                <option value="OTHERS">OTHERS (SPECIFY)</option>
-            </select>
-            <input type="text" id="attr-Mem_Subtype-others" placeholder="Please specify dynamic category..." style="display:none; margin-top:8px;">
-        `;
+        wrapper.innerHTML = `<select id="attr-Mem_Subtype" onchange="evaluateOthersSpecificationField(this, 'Mem_Subtype'); evaluateOfwFieldsVisibility(this.value);"><option value="" selected disabled>-- Select Voluntary Subtype --</option><option value="EMPLOYED">EMPLOYED</option><option value="INDIVIDUAL PAYOR">INDIVIDUAL PAYOR</option><option value="OTHERS">OTHERS (SPECIFY)</option></select><input type="text" id="attr-Mem_Subtype-others" placeholder="Please specify dynamic category..." style="display:none; margin-top:8px;">`;
     }
     evaluateOfwFieldsVisibility("");
 }
@@ -1060,42 +1051,21 @@ function evaluateSubtypeConditionalDropdowns(selectedType) {
 function evaluateOthersSpecificationField(selectElement, elementAttributeKey) {
     const textInputField = document.getElementById(`attr-${elementAttributeKey}-others`);
     if (!textInputField) return;
-    
-    if (selectElement.value === 'OTHERS') {
-        textInputField.style.display = "block";
-        textInputField.focus();
-    } else {
-        textInputField.style.display = "none";
-        textInputField.value = ""; 
-    }
+    if (selectElement.value === 'OTHERS') { textInputField.style.display = "block"; textInputField.focus(); } 
+    else { textInputField.style.display = "none"; textInputField.value = ""; }
 }
 
 document.body.addEventListener('keydown', (event) => {
     const formGridContainer = document.getElementById('form-grid-target');
     if (!formGridContainer || !formGridContainer.contains(event.target)) return;
-
     if (event.key === 'Enter') {
-        // Prevent accidental enter sumbissions when typing inside radio clusters or specific buttons
         if(event.target.type === 'radio' || event.target.tagName.toLowerCase() === 'button') return;
-        
         event.preventDefault();
-
-        const formFields = Array.from(
-            formGridContainer.querySelectorAll('input:not([disabled]), select:not([disabled])')
-        ).filter(el => el.style.display !== 'none' && el.type !== 'hidden');
-
+        const formFields = Array.from(formGridContainer.querySelectorAll('input:not([disabled]), select:not([disabled])')).filter(el => el.style.display !== 'none' && el.type !== 'hidden');
         const activeIndex = formFields.indexOf(document.activeElement);
-
         if (activeIndex !== -1) {
-            if (activeIndex < formFields.length - 1) {
-                formFields[activeIndex + 1].focus();
-                if (formFields[activeIndex + 1].select) {
-                    formFields[activeIndex + 1].select();
-                }
-            } else {
-                console.log("Last input field reached. Executing live transaction commit save...");
-                commitSaveTransaction();
-            }
+            if (activeIndex < formFields.length - 1) { formFields[activeIndex + 1].focus(); } 
+            else { commitSaveTransaction(); }
         }
     }
 });
@@ -1103,114 +1073,103 @@ document.body.addEventListener('keydown', (event) => {
 function evaluateOfwFieldsVisibility(selectedSubtype) {
     const rowWork = document.getElementById('grid-row-wrapper-Type_Work');
     const rowCountry = document.getElementById('grid-row-wrapper-Type_Country');
-    
     if (!rowWork || !rowCountry) return;
-
-    // Grab the actual text label elements above the inputs
     const labelWork = rowWork.querySelector('label');
     const labelCountry = rowCountry.querySelector('label');
-
     if (selectedSubtype && selectedSubtype.toUpperCase().includes('OFW')) {
-        rowWork.style.display = "flex";
-        rowCountry.style.display = "flex";
-        
-        // Dynamic Frontend Alert: Append the red asterisk to the labels in the UI
+        rowWork.style.display = "flex"; rowCountry.style.display = "flex";
         if (labelWork) labelWork.innerHTML = `Type Work <span class="required-asterisk">*</span>`;
         if (labelCountry) labelCountry.innerHTML = `Type Country <span class="required-asterisk">*</span>`;
     } else {
-        rowWork.style.display = "none";
-        rowCountry.style.display = "none";
-
-        // Remove the asterisks when hidden or non-applicable
+        rowWork.style.display = "none"; rowCountry.style.display = "none";
         if (labelWork) labelWork.innerHTML = `Type Work`;
         if (labelCountry) labelCountry.innerHTML = `Type Country`;
-
         const inputWork = document.getElementById('attr-Type_Work');
         const inputCountry = document.getElementById('attr-Type_Country');
-        if (inputWork) inputWork.value = "";
-        if (inputCountry) inputCountry.value = "";
+        if (inputWork) inputWork.value = ""; if (inputCountry) inputCountry.value = "";
     }
 }
 
 function toggleSidebarMenuLayout() {
     const sidebar = document.getElementById('main-sidebar');
     const toggleIcon = document.getElementById('toggle-icon');
-    
     if (!sidebar) return;
     sidebar.classList.toggle('minimized');
-    
-    if (sidebar.classList.contains('minimized')) {
-        toggleIcon.innerText = 'menu';
-    } else {
-        toggleIcon.innerText = 'menu_open';
-    }
+    toggleIcon.innerText = sidebar.classList.contains('minimized') ? 'menu' : 'menu_open';
 }
 
 function cancelEmployerFilingAndReturn() {
     if (interruptedWizardState !== null) {
-        // 1. Recover the wizard state parameters from memory safely
         isWizardMode = true;
         wizardCurrentStepIndex = interruptedWizardState.wizardCurrentStepIndex;
         wizardPrimaryTrackingKey = interruptedWizardState.wizardPrimaryTrackingKey;
         activeTable = wizardSteps[wizardCurrentStepIndex];
         workingRecordId = null;
 
-        // 2. Adjust sidebar tabs highlight trackers back to Member Information view lines
         document.querySelectorAll('#table-tabs li').forEach(el => {
             if (el.innerText.includes('Member Information')) el.classList.add('selected');
             else el.classList.remove('selected');
         });
-
         document.getElementById('modal-title-intent').innerText = `Step ${wizardCurrentStepIndex + 1}: Unified Registration (${activeTable})`;
 
-        // 3. Re-render the form workspace layout grid context frames
         buildFormWorkspace().then(() => {
-            // Repopulate what they had typed before clicking the notification button
-            Object.keys(interruptedWizardState.cachedFormData).forEach(attr => {
-                const val = interruptedWizardState.cachedFormData[attr];
-                if (['First_time', 'Sex'].includes(attr)) {
-                    const radioEl = document.getElementById(`attr-${attr}-${val}`);
+            Object.keys(interruptedWizardState.cachedFormData).forEach(domElementId => {
+                const val = interruptedWizardState.cachedFormData[domElementId];
+                if (domElementId.startsWith('name-attr-First_time') || domElementId.startsWith('name-attr-Sex')) {
+                    const radioEl = document.querySelector(`input[name="${domElementId}"][value="${val}"]`);
                     if (radioEl) radioEl.checked = true;
                 } else {
-                    const inputField = document.getElementById(`attr-${attr}`);
+                    const inputField = document.getElementById(domElementId);
                     if (inputField) inputField.value = val;
                 }
             });
-
-            // Wipe out the interruption memory pass so it stays clear
             interruptedWizardState = null;
             triggerNotificationBanner('success', "Returned safely back to Member Registration Wizard!");
         });
-    } else {
-        // Fallback safety if no active wizard was running
-        closeCrudModal();
-    }
+    } else { closeCrudModal(); }
 }
 
 function executeAdministrativeSessionTermination() {
-    const cautionMessage = "Executing secure administrative session termination. You will be redirected back to the credential authorization page. Do you wish to proceed?";
-    
+    const cautionMessage = "Executing secure administrative session termination. Proceed?";
     executeProtectedConfirmationPrompt(cautionMessage, () => {
-        // 💡 Clear out BOTH verification passes cleanly!
         sessionStorage.removeItem('isAdminAuthenticated');
         localStorage.removeItem('isAdminAuthenticated');
-
-        // Flush client-side wizard transaction state buffers
-        isWizardMode = false;
-        wizardPrimaryTrackingKey = null;
-        if (wizardMultiEntryStore) {
-            wizardMultiEntryStore.member = null;
-            wizardMultiEntryStore.contact = null;
-            wizardMultiEntryStore.employment = [];
-            wizardMultiEntryStore.prevemployment = [];
-            wizardMultiEntryStore.heir = [];
-            wizardMultiEntryStore.governmentid = null;
-        }
-
-        triggerNotificationBanner('error', "Terminating session keys...");
-
-        setTimeout(() => {
-            window.location.replace("login.html");
-        }, 800); 
+        isWizardMode = false; wizardPrimaryTrackingKey = null;
+        window.location.replace("login.html");
     });
+}
+// 💡 NEW: Evicts an entire dynamic row block and shifts remaining inputs into alignment balances
+function evictWizardRowSetFields(tableKey, blockRowIndex) {
+    const loopCount = wizardStepRowMultipliers[tableKey] || 1;
+    const compiledPayloadCache = [];
+
+    // 1. First, gather what's currently typed everywhere so we don't wipe active inputs
+    for (let rowId = 0; rowId < loopCount; rowId++) {
+        const singleRowPayload = {};
+        tableStructures[tableKey].forEach(attr => {
+            const domId = loopCount === 1 ? `attr-${attr}` : `attr-${attr}-${rowId}`;
+            if (['First_time', 'Sex'].includes(attr)) {
+                const checkedRadio = document.querySelector(`input[name="name-${domId}"]:checked`);
+                singleRowPayload[attr] = checkedRadio ? checkedRadio.value : '';
+            } else {
+                const inputField = document.getElementById(domId);
+                singleRowPayload[attr] = inputField ? inputField.value : '';
+            }
+        });
+        compiledPayloadCache.push(singleRowPayload);
+    }
+
+    // 2. Remove the chosen row block row out of the temporary data cache array
+    compiledPayloadCache.splice(blockRowIndex, 1);
+    wizardMultiEntryStore[tableKey] = compiledPayloadCache;
+
+    // 3. Decrease the structural multiplier counter tracker by one row index unit
+    if (wizardStepRowMultipliers[tableKey] > 1) {
+        wizardStepRowMultipliers[tableKey]--;
+    }
+
+    triggerNotificationBanner('error', "Purged chosen row section framework layout block.");
+    
+    // 4. Re-render the form canvas view safely
+    buildFormWorkspace();
 }
