@@ -145,17 +145,16 @@ function injectWizardProgressIndicator() {
     let progressHtml = `<div class="wizard-progress-bar">`;
     wizardSteps.forEach((step, idx) => {
         let statusClass = 'wizard-step-indicator';
-        let icon = 'circle'; // Default upcoming circle
+        let icon = 'circle'; 
         
         if (idx === wizardCurrentStepIndex) {
             statusClass += ' active-step';
-            icon = 'radio_button_unchecked'; // Outer ring indicator for the current step
+            icon = 'radio_button_unchecked'; 
         } else if (idx < wizardCurrentStepIndex) {
             statusClass += ' completed-step';
-            icon = 'check'; // Checkmark icon for completed steps
+            icon = 'check'; 
         }
         
-        // Clean up text displays matching your layout limits
         let stepLabel = step;
         if (step === 'prevemployment') stepLabel = 'Prev Job';
         if (step === 'governmentid') stepLabel = 'Gov IDs';
@@ -169,15 +168,6 @@ function injectWizardProgressIndicator() {
             </div>`;
     });
     progressHtml += `</div>`;
-    
-    // Quick-jump Button Trigger for missing Employers on employment step views
-    if (['employment', 'prevemployment'].includes(activeTable)) {
-        progressHtml += `
-            <div class="inline-action-notice">
-                <span>Can't find the registered business listed in the drop-down selector?</span>
-                <button type="button" class="btn-primary" style="padding: 6px 12px; font-size:12px;" onclick="suspendWizardForEmployerFiling()">+ Input New Employer</button>
-            </div>`;
-    }
     
     box.innerHTML = progressHtml + box.innerHTML;
 }
@@ -241,7 +231,7 @@ async function buildFormWorkspace() {
             let highestHeirNum = 0;
             rows.forEach(r => {
                 const match = (r.Heir_Code || '').match(/^H(\d+)$/i);
-                if (match) highestNum = Math.max(highestHeirNum, parseInt(match[1], 10));
+                if (match) highestHeirNum = Math.max(highestHeirNum, parseInt(match[1], 10));
             });
             nextHeirCode = `H${String(highestHeirNum + 1 + offset).padStart(3, '0')}`;
         } catch(e) { 
@@ -424,28 +414,26 @@ async function buildFormWorkspace() {
         }
     }
 
-    const primaryIdField = document.getElementById('attr-Pagibig_ID');
-    if (primaryIdField) {
-        if (isWizardMode) {
-            if (wizardPrimaryTrackingKey !== null && activeTable !== 'member') {
-                // Inside the wizard (Steps 2-6): Lock the ID so it matches Step 1 perfectly
-                primaryIdField.value = wizardPrimaryTrackingKey;
-                primaryIdField.readOnly = true;
-            } else {
-                // Inside the wizard (Step 1): Allow them to type the initial ID freely
-                primaryIdField.readOnly = false;
-            }
-        } else {
-            // Single Table Mode: Always keep it unlocked so admins can type any valid ID manually!
-            primaryIdField.readOnly = false;
-            primaryIdField.value = '';
-        }
-    }
-
     if (isWizardMode) {
         injectWizardProgressIndicator();
         
-        // Inject structural operational layout for Multi-Row entries or dynamic skips
+        if (['employment', 'prevemployment'].includes(activeTable)) {
+            const topNoticeHtml = `
+                <div class="wizard-top-notice-banner">
+                    <div class="notice-left-content">
+                        <span class="material-symbols-outlined">corporate_fare</span>
+                        <span>Can't find the registered business listed in the drop-down selector?</span>
+                    </div>
+                    <button type="button" class="btn-primary flex-center" style="padding: 8px 14px; font-size:12px;" onclick="suspendWizardForEmployerFiling()">
+                        <span class="material-symbols-outlined" style="font-size: 16px;">add</span> Input New Employer
+                    </button>
+                </div>`;
+            const progressBarElement = box.querySelector('.wizard-progress-bar');
+            if (progressBarElement) {
+                progressBarElement.insertAdjacentHTML('afterend', topNoticeHtml);
+            }
+        }
+        
         let wizardFooterActionsHtml = '';
         if (['employment', 'prevemployment'].includes(activeTable)) {
             wizardFooterActionsHtml += `
@@ -464,13 +452,70 @@ async function buildFormWorkspace() {
             box.insertAdjacentHTML('beforeend', `<div style="grid-column: span 2; margin-top: 10px;">${wizardFooterActionsHtml}</div>`);
         }
 
+        // 💡 NEW: Update the modal footer actions dynamically to append a Back button
+        const modalFooter = document.querySelector('.modal-footer');
+        if (modalFooter) {
+            if (wizardCurrentStepIndex > 0) {
+                modalFooter.innerHTML = `
+                    <button class="btn-secondary" onclick="closeCrudModal()">Cancel</button>
+                    <button class="btn-secondary" style="margin-right: auto; background-color: #e2e8f0;" onclick="advanceWizardStepEngine('prev')">← Back</button>
+                    <button class="btn-primary" onclick="commitSaveTransaction()">Next Step →</button>
+                `;
+            } else {
+                // Default Step 1 footer buttons mapping layout
+                modalFooter.innerHTML = `
+                    <button class="btn-secondary" onclick="closeCrudModal()">Cancel</button>
+                    <button class="btn-primary" onclick="commitSaveTransaction()">Next Step →</button>
+                `;
+            }
+        }
+
         const nextButton = document.querySelector('.modal-footer .btn-primary');
         if (nextButton) {
             nextButton.innerText = (wizardCurrentStepIndex === wizardSteps.length - 1) ? "Finish & Save" : "Next Step →";
         }
     } else if (activeTable === 'employer' && interruptedWizardState !== null) {
-        const saveButton = document.querySelector('.modal-footer .btn-primary');
-        if (saveButton) saveButton.innerText = "Commit Employer & Return";
+        // 💡 NEW: Ensure that if we are adding an interrupted employer, the modal footer has its own Cancel handler!
+        const modalFooter = document.querySelector('.modal-footer');
+        if (modalFooter) {
+            modalFooter.innerHTML = `
+                <button class="btn-secondary" onclick="cancelEmployerFilingAndReturn()">Cancel</button>
+                <button class="btn-primary" onclick="commitSaveTransaction()">Commit Employer & Return</button>
+            `;
+        }
+    } else {
+        // Standalone Single Table Mode structural defaults reset
+        const modalFooter = document.querySelector('.modal-footer');
+        if (modalFooter) {
+            modalFooter.innerHTML = `
+                <button class="btn-secondary" onclick="closeCrudModal()">Cancel</button>
+                <button class="btn-primary" onclick="commitSaveTransaction()">Save Changes</button>
+            `;
+        }
+    }
+
+    const primaryIdField = document.getElementById('attr-Pagibig_ID');
+    if (primaryIdField) {
+        if (isWizardMode) {
+            if (activeTable === 'member') {
+                // Step 1: Allow them to type the fresh ID manually
+                primaryIdField.readOnly = false;
+                primaryIdField.disabled = false;
+                
+                // If they go back or re-render, keep what they typed
+                if (wizardPrimaryTrackingKey) {
+                    primaryIdField.value = wizardPrimaryTrackingKey;
+                }
+            } else {
+                // Steps 2 - 6: Automatically display the ID from Step 1, but make it UNTYPABLE
+                primaryIdField.value = wizardPrimaryTrackingKey || '';
+                primaryIdField.readOnly = true;
+            }
+        } else {
+            // Standalone Single Table Mode: Keep it fully unlocked and editable
+            primaryIdField.readOnly = false;
+            primaryIdField.disabled = false;
+        }
     }
 }
 
@@ -542,12 +587,24 @@ function stageWizardArrayRowCache(tableKey) {
 }
 
 function bypassOptionalWizardSegment(tableKey) {
-    wizardMultiEntryStore[tableKey] = []; // Explicitly flag table segment context as skipped empty
+    wizardMultiEntryStore[tableKey] = []; 
     triggerNotificationBanner('success', `Skipped segment details module framework for ${tableKey}.`);
     advanceWizardStepEngine();
 }
 
-async function advanceWizardStepEngine() {
+async function advanceWizardStepEngine(direction = 'next') {
+    if (direction === 'prev') {
+        if (wizardCurrentStepIndex > 0) {
+            wizardCurrentStepIndex--;
+            activeTable = wizardSteps[wizardCurrentStepIndex];
+            workingRecordId = null;
+            await buildFormWorkspace();
+            document.getElementById('modal-title-intent').innerText = `Step ${wizardCurrentStepIndex + 1}: Unified Registration (${activeTable})`;
+        }
+        return;
+    }
+
+    // Standard 'next' logic continues here...
     if (wizardCurrentStepIndex < wizardSteps.length - 1) {
         wizardCurrentStepIndex++;
         activeTable = wizardSteps[wizardCurrentStepIndex];
@@ -556,13 +613,10 @@ async function advanceWizardStepEngine() {
         await buildFormWorkspace();
         document.getElementById('modal-title-intent').innerText = `Step ${wizardCurrentStepIndex + 1}: Unified Registration (${activeTable})`;
     } else {
-        // Final Wizard validation step check: Verify dynamic beneficiary registry is not left blank
         if (wizardMultiEntryStore.heir.length === 0) {
             triggerNotificationBanner('error', "Validation Violation: At least one Beneficiary registry item must be logged.");
             return;
         }
-
-        // Commit full batch process out onto backend REST routes pipelines sequentially
         await pushMultiEntryWizardPipeline();
     }
 }
@@ -593,22 +647,35 @@ async function pushMultiEntryWizardPipeline() {
         const arrayTables = ['employment', 'prevemployment', 'heir'];
         for (let tableKey of arrayTables) {
             const recordsList = wizardMultiEntryStore[tableKey];
+            // 💡 Fix: Double check that the list contains actual objects and isn't empty or skipped
             if (recordsList && recordsList.length > 0) {
                 for (let dataRow of recordsList) {
-                    await fetch(`${API_BASE}/create/${tableKey}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(dataRow)
-                    });
+                    // Check if the item contains real information besides just a carryover Pagibig_ID
+                    const uniqueDataKeys = Object.keys(dataRow).filter(k => k !== 'Pagibig_ID' && k !== 'Heir_Code' && k !== 'Employer_ID');
+                    const isRowPopulated = uniqueDataKeys.some(k => dataRow[k] !== null && dataRow[k] !== '');
+                    
+                    if (isRowPopulated) {
+                        await fetch(`${API_BASE}/create/${tableKey}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(dataRow)
+                        });
+                    }
                 }
             }
         }
 
-        // 4. Commit Step 6: Government IDs (if any fields filled out)
+        // 4. Commit Step 6: Government IDs (Only if actual data was typed)
         if (wizardMultiEntryStore.governmentid) {
-            // Double-check if the profile filled out something since it's skippable
-            const hasValues = Object.values(wizardMultiEntryStore.governmentid).some(v => v !== "" && v !== wizardPrimaryTrackingKey);
-            if (hasValues) {
+            // 💡 Fix: Filter out system tracker keys to see if the user filled out any identification rows manually
+            const explicitUserInputs = Object.keys(wizardMultiEntryStore.governmentid)
+                .filter(key => key !== 'Pagibig_ID');
+
+            const hasValidIdentificationData = explicitUserInputs.some(
+                key => wizardMultiEntryStore.governmentid[key] !== null && wizardMultiEntryStore.governmentid[key].trim() !== ""
+            );
+
+            if (hasValidIdentificationData) {
                 await fetch(`${API_BASE}/create/governmentid`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1076,6 +1143,47 @@ function toggleSidebarMenuLayout() {
         toggleIcon.innerText = 'menu';
     } else {
         toggleIcon.innerText = 'menu_open';
+    }
+}
+
+function cancelEmployerFilingAndReturn() {
+    if (interruptedWizardState !== null) {
+        // 1. Recover the wizard state parameters from memory safely
+        isWizardMode = true;
+        wizardCurrentStepIndex = interruptedWizardState.wizardCurrentStepIndex;
+        wizardPrimaryTrackingKey = interruptedWizardState.wizardPrimaryTrackingKey;
+        activeTable = wizardSteps[wizardCurrentStepIndex];
+        workingRecordId = null;
+
+        // 2. Adjust sidebar tabs highlight trackers back to Member Information view lines
+        document.querySelectorAll('#table-tabs li').forEach(el => {
+            if (el.innerText.includes('Member Information')) el.classList.add('selected');
+            else el.classList.remove('selected');
+        });
+
+        document.getElementById('modal-title-intent').innerText = `Step ${wizardCurrentStepIndex + 1}: Unified Registration (${activeTable})`;
+
+        // 3. Re-render the form workspace layout grid context frames
+        buildFormWorkspace().then(() => {
+            // Repopulate what they had typed before clicking the notification button
+            Object.keys(interruptedWizardState.cachedFormData).forEach(attr => {
+                const val = interruptedWizardState.cachedFormData[attr];
+                if (['First_time', 'Sex'].includes(attr)) {
+                    const radioEl = document.getElementById(`attr-${attr}-${val}`);
+                    if (radioEl) radioEl.checked = true;
+                } else {
+                    const inputField = document.getElementById(`attr-${attr}`);
+                    if (inputField) inputField.value = val;
+                }
+            });
+
+            // Wipe out the interruption memory pass so it stays clear
+            interruptedWizardState = null;
+            triggerNotificationBanner('success', "Returned safely back to Member Registration Wizard!");
+        });
+    } else {
+        // Fallback safety if no active wizard was running
+        closeCrudModal();
     }
 }
 
