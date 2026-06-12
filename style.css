@@ -1055,7 +1055,7 @@ input::placeholder {
     gap: 8px;
     margin: 24px 0 6px 0;
     padding-bottom: 8px;
-    border-bottom: 2px dashed #cbd5e1;
+    border-bottom: 1px solid #cbd5e1;
     color: var(--pagibig-blue);
     width: 100%;
     box-sizing: border-box;
@@ -1073,6 +1073,28 @@ input::placeholder {
 
 .multiplier-row-divider .material-symbols-outlined {
     font-size: 18px;
+}
+
+/* --- ACCENTUATED SPLIT ROW HEADER MECHANICS --- */
+.multiplier-row-divider.alignment-split-header {
+    display: flex !important;
+    flex-direction: row !important; /* Explicitly forces elements onto one horizontal line */
+    justify-content: space-between !important; /* Pushes title group completely left, button far right */
+    align-items: center !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    text-align: left !important; /* Overrides any parent center inheritance alignments */
+}
+
+.multiplier-row-divider .notice-left-content {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+}
+
+/* Remove center structural margins from the delete button */
+.multiplier-row-divider .btn-divider-delete {
+    margin: 0 !important; 
 }
 
 .wizard-array-actions-block {

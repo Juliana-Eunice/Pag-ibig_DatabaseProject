@@ -240,9 +240,11 @@ async function buildFormWorkspace() {
                 : '';
 
             box.innerHTML += `
-                <div class="multiplier-row-divider">
-                    <span class="material-symbols-outlined">layers</span>
-                    <h4>${sectionLabel}</h4>
+                <div class="multiplier-row-divider alignment-split-header">
+                    <div class="notice-left-content" style="gap: 8px;">
+                        <span class="material-symbols-outlined">layers</span>
+                        <h4>${sectionLabel}</h4>
+                    </div>
                     ${deleteSectionButtonHtml}
                 </div>`;
         }
@@ -345,7 +347,12 @@ async function buildFormWorkspace() {
                     const dateColumns = ['Birth_Date', 'Date_Employed', 'Date_From', 'Date_To', 'Heir_DateBirth'];
 
                     if (numericColumns.includes(attr)) inputType = 'number';
-                    if (dateColumns.includes(attr)) inputType = 'date';
+                    if (dateColumns.includes(attr)) {
+                        inputType = 'date';
+                        // Dynamically calculate today's ISO date string (YYYY-MM-DD)
+                        const todayISO = new Date().toISOString().split('T')[0];
+                        extraAttributes += ` max="${todayISO}"`;
+                    }
 
                     if (['Mem_Name', 'Fat_Name', 'Mot_Name', 'Spouse_Name', 'MemCert_Name', 'Heir_Name'].includes(attr)) {
                         placeholderText = 'LAST NAME, FIRST NAME MIDDLE NAME';
@@ -616,7 +623,7 @@ function incrementWizardFormRowFields(tableKey) {
     // 3. Safe increment the field section multiplier pointer
     wizardStepRowMultipliers[tableKey] = loopCount + 1;
     
-    triggerNotificationBanner('success', "Appended fresh blank fields block entry line into current layer workspace section.");
+    triggerNotificationBanner('success', "Successfully appended new input fields.");
     
     // 4. Re-render the form. The restoration engine below will fill in what we just saved!
     buildFormWorkspace();
@@ -656,7 +663,7 @@ function handleChoiceSelection(selectionType) {
 
 function bypassOptionalWizardSegment(tableKey) {
     wizardMultiEntryStore[tableKey] = []; 
-    triggerNotificationBanner('success', `Skipped module details row persistence logs for ${tableKey}.`);
+    triggerNotificationBanner('success', `Skipped records for ${tableKey}.`);
     
     if (wizardCurrentStepIndex < wizardSteps.length - 1) {
         wizardCurrentStepIndex++;
@@ -731,7 +738,7 @@ async function advanceWizardStepEngine(direction = 'next') {
         document.getElementById('modal-title-intent').innerText = `Step ${wizardCurrentStepIndex + 1}: Unified Registration (${activeTable})`;
     } else {
         if (wizardMultiEntryStore.heir.length === 0) {
-            triggerNotificationBanner('error', "Validation Violation: At least one Beneficiary registry item must be logged.");
+            triggerNotificationBanner('error', "Validation Violation: Member must have at least one beneficiary.");
             return;
         }
         await pushMultiEntryWizardPipeline();
@@ -740,7 +747,7 @@ async function advanceWizardStepEngine(direction = 'next') {
 
 async function pushMultiEntryWizardPipeline() {
     try {
-        triggerNotificationBanner('success', "Executing secure batch transaction registration upload...");
+        triggerNotificationBanner('success', "Uploading batch registration records...");
 
         if (wizardMultiEntryStore.member) {
             await fetch(`${API_BASE}/create/member`, {
@@ -791,7 +798,7 @@ async function pushMultiEntryWizardPipeline() {
         activeTable = 'member';
         fetchLedgerRecords();
         terminateWizardSession();
-        triggerNotificationBanner('success', "Full Member relational data stack committed successfully across all live indices!");
+        triggerNotificationBanner('success', "Full member data has been successfully added to all relations!");
 
     } catch (err) {
         console.error("Batch commit crash transaction failure:", err);
@@ -800,6 +807,51 @@ async function pushMultiEntryWizardPipeline() {
 }
 
 async function commitSaveTransaction() {
+    // === 📅 DATE & AGE VALIDATION POLISHES ===
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normalize time components for accurate date evaluation
+    
+    const isWizard = isWizardMode;
+    const currentTable = activeTable;
+    const bounds = isWizard ? (wizardStepRowMultipliers[currentTable] || 1) : 1;
+
+    for (let rId = 0; rId < bounds; rId++) {
+        // Track down all date structures related to the active operational scope
+        const dateFields = ['Birth_Date', 'Date_Employed', 'Date_From', 'Date_To', 'Heir_DateBirth'].filter(d => tableStructures[currentTable].includes(d));
+
+        for (let attr of dateFields) {
+            const domId = bounds === 1 ? `attr-${attr}` : `attr-${attr}-${rId}`;
+            const dateFieldInput = document.getElementById(domId);
+            
+            if (dateFieldInput && dateFieldInput.value) {
+                const selectedDate = new Date(dateFieldInput.value);
+                selectedDate.setHours(0, 0, 0, 0);
+
+                // 1. Absolute Check: Prevent ANY date field from being greater than today
+                if (selectedDate > today) {
+                    triggerNotificationBanner('error', `Validation Blocked: ${attr.replace(/_/g, ' ')} cannot be a future date.`);
+                    return;
+                }
+
+                // 2. Age Profile Constraint Check: Enforce minimum age limit of 18 on primary member account holders
+                if (attr === 'Birth_Date' && currentTable === 'member') {
+                    let age = today.getFullYear() - selectedDate.getFullYear();
+                    const monthDifference = today.getMonth() - selectedDate.getMonth();
+                    
+                    // Adjustment check if their birth month/day hasn't occurred yet in the current year
+                    if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < selectedDate.getDate())) {
+                        age--;
+                    }
+
+                    if (age < 18) {
+                        triggerNotificationBanner('error', "Registration Refused: Member account registration requires applicant to be at least 18 years old.");
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
     const isEditMode = workingRecordId !== null;
     if (!isWizardMode || (activeTable === 'employer' && interruptedWizardState !== null)) {
         const dataPayload = {};
@@ -842,9 +894,9 @@ async function commitSaveTransaction() {
                 } else {
                     fetchLedgerRecords(); closeCrudModal(); clearFormCache();
                 }
-                triggerNotificationBanner('success', "Record added successfully into live schema index.");
+                triggerNotificationBanner('success', "Record added successfully into the relation!");
             }
-        } catch (e) { triggerNotificationBanner('error', "Connection endpoint communications break."); }
+        } catch (e) { triggerNotificationBanner('error', "Connection to database failed. Try reconnecting."); }
         return;
     }
 
@@ -887,8 +939,10 @@ async function commitSaveTransaction() {
                             return !siblingField || !siblingField.value;
                         });
                         
-                        // If it's a repeated row block and completely blank, it's safe to bypass
-                        if (isEntireRowUntouched) shouldBypassValidation = true;
+                        // Row #1 (rowId === 0) must NEVER bypass validation if the table has required fields!
+                        if (isEntireRowUntouched && rowId > 0) {
+                            shouldBypassValidation = true;
+                        }
                     }
 
                     // If it's a standard single-entry step, or a row that was partially filled out, throw the error banner
@@ -1134,7 +1188,7 @@ function cancelEmployerFilingAndReturn() {
                 }
             });
             interruptedWizardState = null;
-            triggerNotificationBanner('success', "Returned safely back to Member Registration Wizard!");
+            triggerNotificationBanner('success', "Returned back to Member Registration!");
         });
     } else { closeCrudModal(); }
 }
@@ -1178,8 +1232,28 @@ function evictWizardRowSetFields(tableKey, blockRowIndex) {
         wizardStepRowMultipliers[tableKey]--;
     }
 
-    triggerNotificationBanner('error', "Purged chosen row section framework layout block.");
+    triggerNotificationBanner('error', "Section removed.");
     
     // 4. Re-render the form canvas view safely
     buildFormWorkspace();
 }
+
+// 📞 PHONE NUMBER INPUT FILTER: Only allows numbers (0-9), spaces, and the "+" sign
+document.body.addEventListener('input', (event) => {
+    const target = event.target;
+    
+    // Check if the input field is one of your designated phone number columns
+    if (target && ['Cell_Num', 'Home_Num', 'Business_Direct', 'Business_Trunk'].some(attr => target.id.includes(attr))) {
+        
+        // Strip out any character that is NOT a number, a space, or a plus sign
+        const filteredValue = target.value.replace(/[^0-9+\s]/g, '');
+        
+        // Prevent typing multiple '+' signs by ensuring it only stays at the very beginning
+        if (filteredValue.includes('+')) {
+            // Keep the first '+' and strip any subsequent ones
+            target.value = '+' + filteredValue.replace(/\+/g, '');
+        } else {
+            target.value = filteredValue;
+        }
+    }
+});
