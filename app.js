@@ -1089,13 +1089,36 @@ function triggerNotificationBanner(messageType, descriptionText) {
 
 function executeProtectedConfirmationPrompt(promptString, affirmativeCallback) {
     const overlay = document.getElementById('confirm-modal-overlay');
-    document.getElementById('confirm-modal-message').innerText = promptString;
+    
+    // Locate the structural card element inside this confirmation overlay
+    const containerCard = overlay.querySelector('.modal-card');
+    if (containerCard) {
+        containerCard.className = 'modal-card confirmation-warning-accent-card';
+    }
+
+    // Safely update the text message layer
+    const messageNode = document.getElementById('confirm-modal-message');
+    if (messageNode) {
+        messageNode.innerText = promptString;
+    }
+
     overlay.classList.remove('hidden');
+    
     const btnYes = document.getElementById('confirm-btn-yes');
     const btnNo = document.getElementById('confirm-btn-no');
-    const clearPromptSession = () => { overlay.classList.add('hidden'); btnYes.onclick = null; btnNo.onclick = null; };
-    btnNo.onclick = clearPromptSession;
-    btnYes.onclick = () => { affirmativeCallback(); clearPromptSession(); };
+    
+    // Clean up classes and click bindings when closing out the view
+    const clearPromptSession = () => { 
+        overlay.classList.add('hidden'); 
+        if (containerCard) {
+            containerCard.className = 'modal-card'; // Resets back to clean defaults
+        }
+        if (btnYes) btnYes.onclick = null; 
+        if (btnNo) btnNo.onclick = null; 
+    };
+    
+    if (btnNo) btnNo.onclick = clearPromptSession;
+    if (btnYes) btnYes.onclick = () => { affirmativeCallback(); clearPromptSession(); };
 }
 
 function openHelpModal() { document.getElementById('help-modal-overlay').classList.remove('hidden'); }
