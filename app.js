@@ -1047,7 +1047,7 @@ function stageRowModification(rowData, keyParamString) {
 }
 
 function executeRowRemoval(keyParamString) {
-    const promptString = "Warning: Deleting this transaction line row will permanently purge values from the live database schema. Proceed?";
+    const promptString = "You're about to permanently delete this transaction record. It will be removed from the ledger and cannot be recovered. Proceed?";
     executeProtectedConfirmationPrompt(promptString, async () => {
         const response = await fetch(`${API_BASE}/delete/${activeTable}?${keyParamString}`, { method: 'DELETE' });
         const result = await response.json();
@@ -1194,7 +1194,7 @@ function cancelEmployerFilingAndReturn() {
 }
 
 function executeAdministrativeSessionTermination() {
-    const cautionMessage = "Executing secure administrative session termination. Proceed?";
+    const cautionMessage = "You will be logged out of the Pag-IBIG Admin Portal. Any unsaved changes will be lost. Proceed?";
     executeProtectedConfirmationPrompt(cautionMessage, () => {
         sessionStorage.removeItem('isAdminAuthenticated');
         localStorage.removeItem('isAdminAuthenticated');
