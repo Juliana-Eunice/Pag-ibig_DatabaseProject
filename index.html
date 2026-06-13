@@ -81,9 +81,26 @@
                     <p class="breadcrumbs">Database / Tables / <span id="breadcrumb-sub">member</span></p>
                 </div>
                 
-                <div class="search-bar-wrapper" style="margin-left: auto; margin-right: 20px;">
-                    <span class="material-symbols-outlined search-icon">search</span>
-                    <input type="text" id="ledger-search-input" placeholder="Search this table..." onkeyup="executeLedgerSearchFilter()">
+                <div class="header-filter-group" style="margin-left: auto; margin-right: 20px;">
+                    <div class="search-bar-wrapper">
+                        <span class="material-symbols-outlined search-icon">search</span>
+                        <input type="text" id="ledger-search-input" placeholder="Search this table..." onkeyup="executeLedgerSearchFilter()">
+                    </div>
+                    <div class="filter-dropdown-wrapper" id="filter-dropdown-wrapper">
+                        <button class="btn-filter-toggle" id="filter-toggle-btn" onclick="toggleFilterPanel()" title="Filter by attribute">
+                            <span class="material-symbols-outlined">filter_list</span>
+                            <span>Filter</span>
+                            <span class="filter-active-badge hidden" id="filter-active-badge"></span>
+                        </button>
+                        <div class="filter-panel hidden" id="filter-panel">
+                            <div class="filter-panel-header">
+                                <span class="material-symbols-outlined">tune</span>
+                                <strong>Filter by Attribute</strong>
+                                <button class="filter-clear-btn" onclick="clearAllFilters()" title="Clear all filters">Clear all</button>
+                            </div>
+                            <div id="filter-fields-container" class="filter-fields-container"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <button class="btn-primary flex-center" onclick="openChoiceModal()">

@@ -63,6 +63,42 @@ const primaryKeyTracker = {
     heir: ['Pagibig_ID', 'Heir_Code']
 };
 
+// ── FILTER FIELD DEFINITIONS ──────────────────────────────────────────────────
+// Mirrors the exact input types / options used in the add-member form.
+// type: 'select' | 'radio' | 'date-range' | 'text' (default)
+const FILTER_FIELD_DEFINITIONS = {
+    // member
+    Occ_Stats:          { type: 'select',     options: ['UNEMPLOYED/NOT YET EMPLOYED', 'EMPLOYED'] },
+    First_time:         { type: 'radio',      options: ['YES', 'NO'] },
+    Mem_Type:           { type: 'select',     options: ['MANDATORY', 'VOLUNTARY'] },
+    Mem_Subtype:        { type: 'select',     options: ['EMPLOYED', 'OVERSEAS FILIPINO WORKER (OFW)', 'SELF-EMPLOYED', 'INDIVIDUAL PAYOR', 'OTHERS'] },
+    Type_Work:          { type: 'select',     options: ['Land-based', 'Sea-based'] },
+    Sex:                { type: 'radio',      options: ['M', 'F'] },
+    Marital_Status:     { type: 'select',     options: [
+                            { value: 'S', label: 'Single / Unmarried' },
+                            { value: 'W', label: 'Widow / er' },
+                            { value: 'A', label: 'Annulled' },
+                            { value: 'M', label: 'Married' },
+                            { value: 'LS', label: 'Legally Separated' }
+                         ]},
+    Frequency_Payment:  { type: 'select',     options: ['Monthly', 'Quarterly'] },
+    Birth_Date:         { type: 'date-range' },
+    // contact
+    Pref_Mail_Address:  { type: 'select',     options: ['Present Home Address', 'Permanent Home Address', 'Employer/Business Address'] },
+    // employment
+    Employment_Status:  { type: 'select',     options: ['Permanent/Regular', 'Casual', 'Contractual', 'Project-based', 'Part-time/Temporary'] },
+    Office_Assignment:  { type: 'select',     options: ['Head Office', 'Branch Office'] },
+    Date_Employed:      { type: 'date-range' },
+    // prevemployment
+    PrevOffice_Assignment: { type: 'select',  options: ['Head Office', 'Branch Office'] },
+    Date_From:          { type: 'date-range' },
+    Date_To:            { type: 'date-range' },
+    // heir
+    Heir_DateBirth:     { type: 'date-range' },
+};
+
+let activeFilters = {}; // { col: { type, value, valueTo? } }
+
 window.addEventListener('DOMContentLoaded', () => {
     buildFormWorkspace();
     fetchLedgerRecords();
@@ -100,6 +136,10 @@ function changeWorkspaceTable(tableKey, menuRef) {
     clearFormCache();
     buildFormWorkspace();
     fetchLedgerRecords();
+    activeFilters = {};
+    const panel = document.getElementById('filter-panel');
+    if (panel) panel.classList.add('hidden');
+    buildFilterPanel();
 
     const searchInput = document.getElementById('ledger-search-input');
     if (searchInput) searchInput.value = '';
@@ -1081,16 +1121,170 @@ function openCrudModal() { document.getElementById('modal-overlay').classList.re
 function closeCrudModal() { document.getElementById('modal-overlay').classList.add('hidden'); clearFormCache(); }
 
 function executeLedgerSearchFilter() {
-    const searchVal = document.getElementById('ledger-search-input').value.toLowerCase();
+    applyTableFiltering();
+}
+
+function applyTableFiltering() {
+    const searchVal = (document.getElementById('ledger-search-input').value || '').toLowerCase();
     const rows = document.getElementById('ledger-body-target').getElementsByTagName('tr');
+    const headers = document.getElementById('ledger-header-target').querySelectorAll('th');
+    const columnIndexMap = {};
+    headers.forEach((th, i) => { columnIndexMap[th.textContent.trim()] = i; });
+
     for (let i = 0; i < rows.length; i++) {
-        let match = false;
-        for (let j = 0; j < rows[i].cells.length - 1; j++) {
-            if (rows[i].cells[j].textContent.toLowerCase().includes(searchVal)) { match = true; break; }
+        const cells = rows[i].cells;
+
+        // Global text search across all data columns
+        let matchesSearch = !searchVal;
+        if (!matchesSearch) {
+            for (let j = 0; j < cells.length - 1; j++) {
+                if (cells[j].textContent.toLowerCase().includes(searchVal)) { matchesSearch = true; break; }
+            }
         }
-        rows[i].style.display = match ? "" : "none";
+
+        // Attribute filters — every active filter must pass
+        let matchesFilters = true;
+        for (const [colKey, filter] of Object.entries(activeFilters)) {
+            if (!filter || !filter.value) continue;
+            const colIdx = columnIndexMap[colKey];
+            if (colIdx === undefined) continue;
+            const cellText = cells[colIdx] ? cells[colIdx].textContent.trim() : '';
+
+            if (filter.type === 'date-range') {
+                // Compare as date strings (YYYY-MM-DD)
+                const cellDate = cellText; // already YYYY-MM-DD from fetchLedgerRecords
+                if (filter.value && cellDate < filter.value) { matchesFilters = false; break; }
+                if (filter.valueTo && cellDate > filter.valueTo) { matchesFilters = false; break; }
+            } else {
+                if (!cellText.toLowerCase().includes(filter.value.toLowerCase())) { matchesFilters = false; break; }
+            }
+        }
+
+        rows[i].style.display = (matchesSearch && matchesFilters) ? '' : 'none';
+    }
+
+    // Update active badge count
+    const activeCount = Object.values(activeFilters).filter(f => f && f.value).length;
+    const badge = document.getElementById('filter-active-badge');
+    if (badge) {
+        badge.textContent = activeCount;
+        badge.classList.toggle('hidden', activeCount === 0);
     }
 }
+
+function toggleFilterPanel() {
+    const panel = document.getElementById('filter-panel');
+    if (!panel) return;
+    if (panel.classList.contains('hidden')) {
+        buildFilterPanel();
+        panel.classList.remove('hidden');
+    } else {
+        panel.classList.add('hidden');
+    }
+}
+
+function buildFilterPanel() {
+    const container = document.getElementById('filter-fields-container');
+    if (!container) return;
+    const columns = tableStructures[activeTable] || [];
+    container.innerHTML = '';
+
+    columns.forEach(col => {
+        const label = col.replace(/_/g, ' ');
+        const def = FILTER_FIELD_DEFINITIONS[col];
+        const current = activeFilters[col] || {};
+        let inputHtml = '';
+
+        if (def && def.type === 'select') {
+            const opts = def.options.map(o => {
+                const val = typeof o === 'object' ? o.value : o;
+                const lbl = typeof o === 'object' ? o.label : o;
+                const selected = current.value === val ? 'selected' : '';
+                return `<option value="${val}" ${selected}>${lbl}</option>`;
+            }).join('');
+            inputHtml = `
+                <select class="filter-field-input" onchange="setFilterValue('${col}','select',this.value)">
+                    <option value="">— Any —</option>
+                    ${opts}
+                </select>`;
+
+        } else if (def && def.type === 'radio') {
+            const btns = def.options.map(o => {
+                const active = current.value === o ? 'filter-radio-active' : '';
+                return `<button type="button" class="filter-radio-btn ${active}" onclick="setFilterValue('${col}','radio','${o}',this)">${o}</button>`;
+            }).join('');
+            inputHtml = `<div class="filter-radio-group">${btns}</div>`;
+
+        } else if (def && def.type === 'date-range') {
+            inputHtml = `
+                <div class="filter-date-range">
+                    <input type="date" class="filter-field-input" value="${current.value || ''}"
+                        placeholder="From"
+                        oninput="setFilterDateFrom('${col}', this.value)">
+                    <span class="filter-date-sep">to</span>
+                    <input type="date" class="filter-field-input" value="${current.valueTo || ''}"
+                        placeholder="To"
+                        oninput="setFilterDateTo('${col}', this.value)">
+                </div>`;
+
+        } else {
+            inputHtml = `
+                <input type="text" class="filter-field-input" placeholder="Any"
+                    value="${current.value || ''}"
+                    oninput="setFilterValue('${col}','text',this.value)">`;
+        }
+
+        container.innerHTML += `
+            <div class="filter-field-row">
+                <label class="filter-field-label">${label}</label>
+                ${inputHtml}
+            </div>`;
+    });
+}
+
+function setFilterValue(col, type, value, radioBtn) {
+    // For radio: clicking the active button again clears it (toggle off)
+    if (type === 'radio' && activeFilters[col] && activeFilters[col].value === value) {
+        delete activeFilters[col];
+        if (radioBtn) radioBtn.classList.remove('filter-radio-active');
+        // Clear all radio buttons in that group
+        radioBtn.closest('.filter-radio-group').querySelectorAll('.filter-radio-btn').forEach(b => b.classList.remove('filter-radio-active'));
+    } else {
+        activeFilters[col] = { type, value };
+        if (type === 'radio' && radioBtn) {
+            radioBtn.closest('.filter-radio-group').querySelectorAll('.filter-radio-btn').forEach(b => b.classList.remove('filter-radio-active'));
+            radioBtn.classList.add('filter-radio-active');
+        }
+    }
+    applyTableFiltering();
+}
+
+function setFilterDateFrom(col, value) {
+    if (!activeFilters[col]) activeFilters[col] = { type: 'date-range', value: '', valueTo: '' };
+    activeFilters[col].value = value;
+    applyTableFiltering();
+}
+
+function setFilterDateTo(col, value) {
+    if (!activeFilters[col]) activeFilters[col] = { type: 'date-range', value: '', valueTo: '' };
+    activeFilters[col].valueTo = value;
+    applyTableFiltering();
+}
+
+function clearAllFilters() {
+    activeFilters = {};
+    buildFilterPanel(); // re-render to reset all inputs
+    applyTableFiltering();
+}
+
+// Close filter panel when clicking outside
+document.addEventListener('click', (e) => {
+    const wrapper = document.getElementById('filter-dropdown-wrapper');
+    const panel = document.getElementById('filter-panel');
+    if (panel && !panel.classList.contains('hidden') && wrapper && !wrapper.contains(e.target)) {
+        panel.classList.add('hidden');
+    }
+});
 
 function triggerNotificationBanner(messageType, descriptionText) {
     const container = document.getElementById('toast-notification-container');
