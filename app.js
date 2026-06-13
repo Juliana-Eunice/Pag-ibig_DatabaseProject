@@ -72,8 +72,30 @@ function changeWorkspaceTable(tableKey, menuRef) {
     activeTable = tableKey;
     document.querySelectorAll('#table-tabs li').forEach(el => el.classList.remove('selected'));
     menuRef.classList.add('selected');
-    document.getElementById('active-title').innerText = tableKey;
-    document.getElementById('breadcrumb-sub').innerText = tableKey;
+
+    // ── 🏷️ METADATA MAPPING MATCHING YOUR EXACT ACCESSIBLE KEYS ──
+    const tableNamingMap = {
+        member: { main: "Member Information", sql: "member" },
+        contact: { main: "Contact Details", sql: "contact" },
+        employment: { main: "Current Employment", sql: "employment" },
+        prevemployment: { main: "Previous Employment", sql: "prevemployment" },
+        heir: { main: "Beneficiary Registry", sql: "heir" },
+        governmentid: { main: "Government IDs", sql: "governmentid" },
+        employer: { main: "Employer Registry", sql: "employer" }
+    };
+
+    const currentNaming = tableNamingMap[tableKey] || { main: tableKey, sql: tableKey };
+
+    // Update main text title header element
+    document.getElementById('active-title').innerText = currentNaming.main;
+    
+    // Smoothly apply the gray folder path style with your exact blue SQL name popout
+    const breadcrumbContainer = document.querySelector('.breadcrumbs');
+    if (breadcrumbContainer) {
+        breadcrumbContainer.innerHTML = `
+            <span style="color: var(--slate-text-light);">Database / Tables / <span id="breadcrumb-sub" style="color: var(--pagibig-blue); font-weight: 600;">${currentNaming.sql}</span></span>
+        `;
+    }
     
     clearFormCache();
     buildFormWorkspace();
@@ -1047,8 +1069,8 @@ function stageRowModification(rowData, keyParamString) {
 }
 
 function executeRowRemoval(keyParamString) {
-    const promptString = "You're about to permanently delete this transaction record. It will be removed from the ledger and cannot be recovered. Proceed?";
-    executeProtectedConfirmationPrompt(promptString, async () => {
+    const promptString = 'You are about to permanently delete this record. It will be removed from the table and cannot be recovered. <br><strong>Are you sure you want to delete?</strong>';
+    executeProtectedConfirmationPrompt('warning', promptString, async () => {
         const response = await fetch(`${API_BASE}/delete/${activeTable}?${keyParamString}`, { method: 'DELETE' });
         const result = await response.json();
         if (result.success) { fetchLedgerRecords(); triggerNotificationBanner('success', "Record successfully removed."); }
@@ -1087,19 +1109,16 @@ function triggerNotificationBanner(messageType, descriptionText) {
     setTimeout(() => { if (toastNode.parentElement) toastNode.remove(); }, 4500);
 }
 
-function executeProtectedConfirmationPrompt(promptString, affirmativeCallback) {
+function executeProtectedConfirmationPrompt(iconName, promptString, affirmativeCallback) {
     const overlay = document.getElementById('confirm-modal-overlay');
-    
-    // Locate the structural card element inside this confirmation overlay
-    const containerCard = overlay.querySelector('.modal-card');
-    if (containerCard) {
-        containerCard.className = 'modal-card confirmation-warning-accent-card';
-    }
-
-    // Safely update the text message layer
     const messageNode = document.getElementById('confirm-modal-message');
+    const iconNode = document.getElementById('confirm-modal-icon');
+
     if (messageNode) {
-        messageNode.innerText = promptString;
+        messageNode.innerHTML = promptString;
+    }
+    if (iconNode) {
+        iconNode.innerText = iconName;
     }
 
     overlay.classList.remove('hidden');
@@ -1107,12 +1126,8 @@ function executeProtectedConfirmationPrompt(promptString, affirmativeCallback) {
     const btnYes = document.getElementById('confirm-btn-yes');
     const btnNo = document.getElementById('confirm-btn-no');
     
-    // Clean up classes and click bindings when closing out the view
     const clearPromptSession = () => { 
         overlay.classList.add('hidden'); 
-        if (containerCard) {
-            containerCard.className = 'modal-card'; // Resets back to clean defaults
-        }
         if (btnYes) btnYes.onclick = null; 
         if (btnNo) btnNo.onclick = null; 
     };
@@ -1217,11 +1232,12 @@ function cancelEmployerFilingAndReturn() {
 }
 
 function executeAdministrativeSessionTermination() {
-    const cautionMessage = "You will be logged out of the Pag-IBIG Admin Portal. Any unsaved changes will be lost. Proceed?";
-    executeProtectedConfirmationPrompt(cautionMessage, () => {
+    const promptString = 'You will be logged out of the Pag-IBIG Admin Portal. Any unsaved changes in memory will be lost. <br><strong> Are you sure you want to log out?</strong>';
+    executeProtectedConfirmationPrompt('warning', promptString, () => {
         sessionStorage.removeItem('isAdminAuthenticated');
         localStorage.removeItem('isAdminAuthenticated');
-        isWizardMode = false; wizardPrimaryTrackingKey = null;
+        isWizardMode = false; 
+        wizardPrimaryTrackingKey = null;
         window.location.replace("login.html");
     });
 }

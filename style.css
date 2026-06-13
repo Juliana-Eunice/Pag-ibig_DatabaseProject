@@ -1190,51 +1190,121 @@ input::placeholder {
 }
 
 /* ==========================================================================
-   ⚠ HIGH-FIDELITY SPLIT ACCENT WARNING MODAL CONFIGURATION
+   ⚠ HIGH-FIDELITY UNIFORM WARNING MODAL CONFIGURATION (FIXED SPACING)
    ========================================================================== */
 .modal-card.confirmation-warning-accent-card {
-    width: 480px !important;
-    max-height: fit-content !important;
-    height: auto !important;
-    overflow: hidden;
+    width: 480px !important; 
+    height: auto !important;          /* Dynamically shrinks card heights down */
+    max-height: max-content !important; /* Prevents container box from over-stretching */
+    min-height: 0 !important;          /* Unclogs grid framework minimums */
 }
 
-/* 1. Yellowish Header Banner Container */
+/* Inherit header padding properties directly from choice modal metrics */
 .confirmation-warning-accent-card .modal-header {
-    background-color: #fffbeb !important;     /* Soft alert yellow tint */
-    border-bottom: 1px solid #fef3c7 !important; /* Contrasting darker yellow divider border */
-    padding: 16px 24px !important;
+    background-color: #fffbeb !important;     
+    border-bottom: 1px solid #fef3c7 !important; 
+    padding: 18px 24px !important; /* Slightly tighter padding for smaller modals */
 }
 
-/* Ensure the warning title and modern layout icons align perfectly inside the header */
 .confirmation-warning-accent-card .modal-header h3 {
-    color: #b45309 !important;               /* Deep corporate amber/yellow text */
+    color: #b45309 !important;               
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 16px;
     margin: 0;
+    font-size: 18px !important;
+    font-weight: 700 !important;
 }
 
-/* 2. Clean White Body Section */
+.confirmation-warning-accent-card .modal-header h3 .material-symbols-outlined {
+    font-size: 22px !important; 
+}
+
+/* 🎯 FIXED BODY SPACING: Keeps text compact and removes excessive bottom gaps */
 .confirmation-warning-accent-card .modal-body {
-    background-color: #ffffff !important;     /* Pure white message backdrop canvas */
-    padding: 24px 24px 16px 24px !important;  /* Balanced padding spaces */
+    background-color: #ffffff !important;
+    padding: 20px 24px 12px 24px !important; /* Reduced bottom padding to snap footer closer */
     max-height: none !important;
+    flex: none !important;                  /* Prevents body from scaling to fill blank areas */
 }
 
 .confirmation-warning-accent-card #confirm-modal-message {
     color: var(--slate-text-dark);
     font-size: 14px;
-    line-height: 1.5;
+    line-height: 1.55;
     margin: 0;
 }
 
-/* 3. Clean White Footer Section */
+/* 🎯 FIXED FOOTER SPACING: Pulls buttons up tight against text */
 .confirmation-warning-accent-card .modal-footer {
-    background-color: #ffffff !important;     /* Removes any gray or yellow button containers */
-    border-top: none !important;              /* Blends footer seamlessly into the body */
-    padding: 8px 24px 24px 24px !important;     /* Bottom anchor spacing layouts */
+    background-color: #ffffff !important;     
+    border-top: none !important;              
+    padding: 10px 24px 20px 24px !important;    
+    display: flex;
     justify-content: flex-end;
     gap: 12px;
+    flex: none !important;                  /* Structural flex locking stabilization pass */
+}
+
+/* Resets prompt actions to use standard design system heights and paddings */
+.confirmation-warning-accent-card #confirm-btn-no,
+.confirmation-warning-accent-card #confirm-btn-yes {
+    padding: 10px 20px !important; 
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    border-radius: 6px !important;
+    height: auto !important;
+    width: auto !important;
+}
+
+.confirmation-warning-accent-card #confirm-btn-yes {
+    background-color: #d97706 !important;     
+    color: #ffffff !important;
+}
+
+.confirmation-warning-accent-card #confirm-btn-yes:hover {
+    background-color: #b45309 !important;     
+}
+/* ==========================================================================
+   ✨ INLINE PROMPT ICON COLUMNS ALIGNMENT LAYOUT
+   ========================================================================== */
+.modal-body.confirm-message-layout {
+    display: flex !important;
+    flex-direction: row !important; /* Locks elements side-by-side horizontally */
+    align-items: center !important; 
+    gap: 20px !important;           /* Clear breathing channel space between column segments */
+    padding: 24px 28px 20px 28px !important;
+}
+
+/* 🎯 Styles the action-specific symbol to display beautifully */
+.confirm-message-layout .prompt-action-icon {
+    font-size: 36px !important;     
+    color: #d97706 !important;
+    padding: 8px; 
+    /*background-color: #fffbeb;
+    border-radius: 50%; 
+    padding: 14px;*/
+    flex-shrink: 0 !important;  
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.confirm-message-layout .prompt-text-wrapper {
+    flex: 1 !important;
+    display: flex;
+    flex-direction: column;
+}
+
+.confirm-message-layout #confirm-modal-message {
+    margin: 0 !important;
+    line-height: 1.6 !important;
+    font-size: 14px !important;
+    color: var(--slate-text-dark);
+}
+
+/* Tighter adjustments to ensure text lines up cleanly with the top of the icon circular badge */
+.confirm-message-layout #confirm-modal-message strong {
+    display: inline-block;
+    margin-top: 8px;
 }

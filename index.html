@@ -77,8 +77,8 @@
         <main class="view-workspace">
             <header class="view-header">
                 <div class="header-title">
-                    <h1>Active Database Entity: <span id="active-title">Member</span></h1>
-                    <p class="breadcrumbs">System Console / Ledger / <span id="breadcrumb-sub">Member</span></p>
+                    <h1>Active Entity: <span id="active-title">Member Information</span></h1>
+                    <p class="breadcrumbs">Database / Tables / <span id="breadcrumb-sub">member</span></p>
                 </div>
                 
                 <div class="search-bar-wrapper" style="margin-left: auto; margin-right: 20px;">
@@ -121,18 +121,22 @@
     <div id="toast-notification-container" class="toast-stack-layer"></div>
 
     <div id="confirm-modal-overlay" class="modal-overlay hidden">
-        <div class="modal-card" style="width: 440px;">
-            <header class="modal-header" style="background-color: #fffbeb; border-top-left-radius:14px; border-top-right-radius:14px;">
-                <h3 style="color: #b45309; display: flex; align-items: center; gap: 8px;">
-                    <span class="material-symbols-outlined">warning</span> System Warning
+        <div class="modal-card confirmation-warning-accent-card">
+            <header class="modal-header">
+                <h3>
+                    System Warning
                 </h3>
+                <button class="close-modal-btn" onclick="document.getElementById('confirm-modal-overlay').classList.add('hidden')">&times;</button>
             </header>
-            <main class="modal-body">
-                <p id="confirm-modal-message" style="margin: 0; font-size: 14px; line-height: 1.5; color: var(--slate-text-light);"></p>
+            <main class="modal-body confirm-message-layout">
+                <span class="material-symbols-outlined prompt-action-icon" id="confirm-modal-icon"></span>
+                <div class="prompt-text-wrapper">
+                    <p id="confirm-modal-message"></p>
+                </div>
             </main>
-            <footer class="modal-footer" style="background-color: #fffdf5;">
+            <footer class="modal-footer">
                 <button class="btn-secondary" id="confirm-btn-no">Cancel</button>
-                <button class="btn-danger" id="confirm-btn-yes" style="background-color: #d97706;">Confirm Action</button>
+                <button class="btn-danger" id="confirm-btn-yes">Confirm Action</button>
             </footer>
         </div>
     </div>
