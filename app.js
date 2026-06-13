@@ -262,7 +262,29 @@ async function buildFormWorkspace() {
     box.innerHTML = '';
     
     const isNewRecord = workingRecordId === null;
-    
+
+    if (!isWizardMode) {
+        const titleElement = document.getElementById('modal-title-intent');
+        if (titleElement) {
+            // Mapping table keys to clean display text labels
+            const displayNames = {
+                member: "Member Information Record",
+                contact: "Contact Details Record",
+                employment: "Current Employment Record",
+                prevemployment: "Previous Employment Record",
+                heir: "Beneficiary Registry Record",
+                governmentid: "Government IDs Record",
+                employer: "Employer Registry Record"
+            };
+            const currentLabel = displayNames[activeTable] || activeTable;
+            
+            // Set title based on whether you are adding fresh or editing existing rows
+            titleElement.innerText = isNewRecord 
+                ? `Add Direct Entry (${currentLabel})` 
+                : `Modify Record Entry (${currentLabel})`;
+        }
+    }
+
     let nextEmployerId = '';
     if (activeTable === 'employer' && isNewRecord) {
         try {
