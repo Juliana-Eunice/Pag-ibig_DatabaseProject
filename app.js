@@ -1110,7 +1110,7 @@ function stageRowModification(rowData, keyParamString) {
 
 function executeRowRemoval(keyParamString) {
     const promptString = 'You are about to permanently delete this record. It will be removed from the table and cannot be recovered. <br><strong>Are you sure you want to delete?</strong>';
-    executeProtectedConfirmationPrompt('warning', promptString, async () => {
+    executeProtectedConfirmationPrompt('delete', promptString, async () => {
         const response = await fetch(`${API_BASE}/delete/${activeTable}?${keyParamString}`, { method: 'DELETE' });
         const result = await response.json();
         if (result.success) { fetchLedgerRecords(); triggerNotificationBanner('success', "Record successfully removed."); }
@@ -1427,7 +1427,7 @@ function cancelEmployerFilingAndReturn() {
 
 function executeAdministrativeSessionTermination() {
     const promptString = 'You will be logged out of the Pag-IBIG Admin Portal. Any unsaved changes in memory will be lost. <br><strong> Are you sure you want to log out?</strong>';
-    executeProtectedConfirmationPrompt('warning', promptString, () => {
+    executeProtectedConfirmationPrompt('logout', promptString, () => {
         sessionStorage.removeItem('isAdminAuthenticated');
         localStorage.removeItem('isAdminAuthenticated');
         isWizardMode = false; 

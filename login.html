@@ -176,7 +176,7 @@
         function updateProgressBar() {
             const val = document.getElementById('password-input').value;
             const fill = document.getElementById('progress-fill');
-            const pct = Math.min(100, (val.length / 10) * 100);
+            const pct = Math.min(100, (val.length / 9) * 100);
             fill.style.width = pct + '%';
         }
 

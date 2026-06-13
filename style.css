@@ -1448,12 +1448,12 @@ input::placeholder {
 
 /* 🎯 Styles the action-specific symbol to display beautifully */
 .confirm-message-layout .prompt-action-icon {
-    font-size: 36px !important;     
+    font-size: 42px !important;     
     color: #d97706 !important;
     padding: 8px; 
-    /*background-color: #fffbeb;
+    background-color: #fffbeb;
     border-radius: 50%; 
-    padding: 14px;*/
+    /*padding: 14px;*/
     flex-shrink: 0 !important;  
     display: inline-flex;
     align-items: center;
