@@ -550,7 +550,7 @@ async function buildFormWorkspace() {
 
         const modalFooter = document.querySelector('.modal-footer');
         if (modalFooter) {
-            const optionalTables = ['employment', 'prevemployment', 'governmentid'];
+            const optionalTables = ['employment', 'prevemployment'];
             const isCurrentStepOptional = optionalTables.includes(activeTable);
             
             let skipButtonHtml = isCurrentStepOptional 
