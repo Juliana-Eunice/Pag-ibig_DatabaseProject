@@ -440,7 +440,7 @@ async function buildFormWorkspace() {
 
                     if (['Mem_Name', 'Fat_Name', 'Mot_Name', 'Spouse_Name', 'MemCert_Name', 'Heir_Name'].includes(attr)) {
                         placeholderText = 'LAST NAME, FIRST NAME MIDDLE NAME';
-                    } else if (['Cell_Num', 'Home_Num', 'Business_Direct', 'Business_Trunk'].includes(attr)) {
+                    } else if (['Cell_Num'].includes(attr)) {
                         placeholderText = '+63 XXX XXXX XXX';
                     }
 
