@@ -122,15 +122,29 @@ app.delete('/api/delete/:table', (req, res) => {
     
     if (!keys) return res.status(400).json({ error: "Invalid table configuration" });
 
-    let whereClauses = [];
+    let deleteSql = '';
     let queryParams = [actualTableName];
-    
-    keys.forEach(k => {
-        whereClauses.push(`?? = ?`);
-        queryParams.push(k, req.query[k]);
-    });
 
-    const deleteSql = `DELETE FROM ?? WHERE ${whereClauses.join(' AND ')}`;
+    // ✨ BULLETPROOF CASCADING OVERRIDE CHECK
+    const holdsPagibigId = keys.includes('Pagibig_ID');
+    const hasTargetedId = req.query.Pagibig_ID !== undefined && req.query.Pagibig_ID !== null;
+    
+    // Check if any composite keys beyond Pagibig_ID are missing in the request query parameters
+    const isMissingSecondaryKeys = keys.some(k => k !== 'Pagibig_ID' && !req.query[k]);
+
+    if (holdsPagibigId && hasTargetedId && isMissingSecondaryKeys) {
+        // If secondary keys like Heir_Code or Employer_ID are missing, force a sweeping cascade delete!
+        deleteSql = `DELETE FROM ?? WHERE Pagibig_ID = ?`;
+        queryParams.push(req.query.Pagibig_ID);
+    } else {
+        // Safe fallback to original row-specific composite key logic
+        let whereClauses = [];
+        keys.forEach(k => {
+            whereClauses.push(`?? = ?`);
+            queryParams.push(k, req.query[k]);
+        });
+        deleteSql = `DELETE FROM ?? WHERE ${whereClauses.join(' AND ')}`;
+    }
     
     db.query(deleteSql, queryParams, (err) => {
         if (err) return res.status(500).json({ error: err.message });

@@ -1140,12 +1140,10 @@ async function executeRowRemoval(keyParamString) {
     // ── 🔒 REFERENTIAL INTEGRITY CHECK FOR EMPLOYER REGISTRY ──
     if (activeTable === 'employer') {
         try {
-            // Parse out the Employer_ID from the query parameters
             const urlParams = new URLSearchParams(keyParamString);
             const targetEmployerId = urlParams.get('Employer_ID');
 
             if (targetEmployerId) {
-                // Fetch the current employment tables to check for active links
                 const [currentEmpRes, prevEmpRes] = await Promise.all([
                     fetch(`${API_BASE}/table/employment`),
                     fetch(`${API_BASE}/table/prevemployment`)
@@ -1154,13 +1152,12 @@ async function executeRowRemoval(keyParamString) {
                 const currentEmploymentRows = await currentEmpRes.json();
                 const prevEmploymentRows = await prevEmpRes.json();
 
-                // Scan both tables for any member matching this Employer_ID
                 const isUsedInCurrent = currentEmploymentRows.some(row => String(row.Employer_ID).trim() === String(targetEmployerId).trim());
                 const isUsedInPrevious = prevEmploymentRows.some(row => String(row.Employer_ID).trim() === String(targetEmployerId).trim());
 
                 if (isUsedInCurrent || isUsedInPrevious) {
                     triggerNotificationBanner('error', `Deletion Denied: Employer (${targetEmployerId}) is currently linked to active member history records.`);
-                    return; // Absolute block: exits before ever triggering the prompt
+                    return; 
                 }
             }
         } catch (err) {
@@ -1170,14 +1167,92 @@ async function executeRowRemoval(keyParamString) {
         }
     }
 
-    // ── Standard execution path for non-restricted rows
-    const promptString = 'You are about to permanently delete this record. It will be removed from the table and cannot be recovered. <br><strong>Are you sure you want to delete?</strong>';
+    // Extract Pag-IBIG ID parameters for the confirmation string
+    const urlParams = new URLSearchParams(keyParamString);
+    const pagibigIdValue = urlParams.get('Pagibig_ID') || 'this record';
+
+    // ── 🔒 MINIMUM BENEFICIARY SAFEGUARD FOR HEIR TABLE ──
+    if (activeTable === 'heir' && pagibigIdValue) {
+        try {
+            // 1. Check if the parent member still exists in the database first
+            const memberCheckResponse = await fetch(`${API_BASE}/table/member`);
+            const allMembers = await memberCheckResponse.json();
+            const memberExists = allMembers.some(m => String(m.Pagibig_ID).trim() === String(pagibigIdValue).trim());
+
+            // If the member doesn't exist, they were already cascaded out!
+            if (!memberExists) {
+                triggerNotificationBanner('success', "Syncing workspace ledger views...");
+                fetchLedgerRecords(); // Silently refresh the stale rows off the screen
+                return; // Exit out gracefully
+            }
+
+            // 2. If the member DOES exist, proceed with your original count restriction check
+            const response = await fetch(`${API_BASE}/table/heir`);
+            const allHeirs = await response.json();
+            const currentMemberHeirs = allHeirs.filter(row => String(row.Pagibig_ID).trim() === String(pagibigIdValue).trim());
+            
+            // Block only if it's an active member trying to delete their absolute last remaining heir
+            if (currentMemberHeirs.length <= 1) {
+                triggerNotificationBanner('error', "Validation Violation: Member must retain at least one beneficiary in the registry.");
+                return; 
+            }
+        } catch (err) {
+            console.error("Failed to run beneficiary safeguard checks:", err);
+            triggerNotificationBanner('error', "Database error evaluating beneficiary limits.");
+            return;
+        }
+    }
+
+    // Grouping rule matrix
+    const cascadeTables = ['member', 'contact'];
+    const isCascadeAction = cascadeTables.includes(activeTable);
+
+    let promptString = '';
+
+    // DYNAMIC TEXT ROUTING LAYER
+    if (isCascadeAction) {
+        promptString = `Deleting member ${pagibigIdValue} from the selected table will wipe out ALL member data across ALL relations to ensure no orphaned rows.<br>` +
+                       `<strong>Are you sure you want to delete?</strong>`;
+    } else {
+        promptString = `You are about to permanently delete this record. It will be removed from the ${activeTable} table and cannot be recovered.<br>` +
+                       `<strong>Are you sure you want to delete?</strong>`;
+    }
+
+    // FUNCTION TIERS EXECUTED INSIDE THE STANDARD CONFIRMATION CALLBACK
     executeProtectedConfirmationPrompt('delete', promptString, async () => {
-        const response = await fetch(`${API_BASE}/delete/${activeTable}?${keyParamString}`, { method: 'DELETE' });
-        const result = await response.json();
-        if (result.success) { 
-            fetchLedgerRecords(); 
-            triggerNotificationBanner('success', "Record successfully removed."); 
+        
+        if (isCascadeAction && urlParams.has('Pagibig_ID')) {
+            // Execution Path A: Cascade loop to delete across all related tables
+            triggerNotificationBanner('success', "Wiping all associated member data...");
+            
+            const targetingSchemas = ['governmentid', 'heir', 'prevemployment', 'employment', 'contact', 'member'];
+            let errorFlag = false;
+
+            for (let schema of targetingSchemas) {
+                try {
+                    await fetch(`${API_BASE}/delete/${schema}?Pagibig_ID=${pagibigIdValue}`, { method: 'DELETE' });
+                } catch (e) {
+                    errorFlag = true;
+                }
+            }
+
+            fetchLedgerRecords();
+            if (!errorFlag) {
+                triggerNotificationBanner('success', "Full member profile completely deleted.");
+            } else {
+                triggerNotificationBanner('error', "Process finished with partial execution errors.");
+            }
+
+        } else {
+            // Execution Path B: Single table isolated row delete
+            const response = await fetch(`${API_BASE}/delete/${activeTable}?${keyParamString}`, { method: 'DELETE' });
+            const result = await response.json();
+            if (result.success) { 
+                fetchLedgerRecords(); 
+                triggerNotificationBanner('success', "Record successfully removed."); 
+            } else {
+                triggerNotificationBanner('error', `Database Rejection: ${result.error || "The record could not be saved."}`);
+            }
         }
     });
 }
