@@ -979,6 +979,12 @@ async function commitSaveTransaction() {
                     fetchLedgerRecords(); closeCrudModal(); clearFormCache();
                 }
                 triggerNotificationBanner('success', "Record added successfully into the relation!");
+            } else {
+                if (activeTable === 'member') {
+                    triggerNotificationBanner('error', `Registration Refused: Pag-IBIG ID '${dataPayload['Pagibig_ID']}' already exists in Member Information.`);
+                } else {
+                    triggerNotificationBanner('error', `Database Rejection: ${result.error || "The record could not be saved."}`);
+                }
             }
         } catch (e) { triggerNotificationBanner('error', "Connection to database failed. Try reconnecting."); }
         return;
@@ -1130,12 +1136,49 @@ function stageRowModification(rowData, keyParamString) {
     });
 }
 
-function executeRowRemoval(keyParamString) {
+async function executeRowRemoval(keyParamString) {
+    // ── 🔒 REFERENTIAL INTEGRITY CHECK FOR EMPLOYER REGISTRY ──
+    if (activeTable === 'employer') {
+        try {
+            // Parse out the Employer_ID from the query parameters
+            const urlParams = new URLSearchParams(keyParamString);
+            const targetEmployerId = urlParams.get('Employer_ID');
+
+            if (targetEmployerId) {
+                // Fetch the current employment tables to check for active links
+                const [currentEmpRes, prevEmpRes] = await Promise.all([
+                    fetch(`${API_BASE}/table/employment`),
+                    fetch(`${API_BASE}/table/prevemployment`)
+                ]);
+                
+                const currentEmploymentRows = await currentEmpRes.json();
+                const prevEmploymentRows = await prevEmpRes.json();
+
+                // Scan both tables for any member matching this Employer_ID
+                const isUsedInCurrent = currentEmploymentRows.some(row => String(row.Employer_ID).trim() === String(targetEmployerId).trim());
+                const isUsedInPrevious = prevEmploymentRows.some(row => String(row.Employer_ID).trim() === String(targetEmployerId).trim());
+
+                if (isUsedInCurrent || isUsedInPrevious) {
+                    triggerNotificationBanner('error', `Deletion Denied: Employer (${targetEmployerId}) is currently linked to active member history records.`);
+                    return; // Absolute block: exits before ever triggering the prompt
+                }
+            }
+        } catch (err) {
+            console.error("Failed to run database dependency checks:", err);
+            triggerNotificationBanner('error', "Database error evaluating row dependency limits.");
+            return;
+        }
+    }
+
+    // ── Standard execution path for non-restricted rows
     const promptString = 'You are about to permanently delete this record. It will be removed from the table and cannot be recovered. <br><strong>Are you sure you want to delete?</strong>';
     executeProtectedConfirmationPrompt('delete', promptString, async () => {
         const response = await fetch(`${API_BASE}/delete/${activeTable}?${keyParamString}`, { method: 'DELETE' });
         const result = await response.json();
-        if (result.success) { fetchLedgerRecords(); triggerNotificationBanner('success', "Record successfully removed."); }
+        if (result.success) { 
+            fetchLedgerRecords(); 
+            triggerNotificationBanner('success', "Record successfully removed."); 
+        }
     });
 }
 
