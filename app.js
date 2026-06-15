@@ -257,6 +257,35 @@ function suspendWizardForEmployerFiling() {
     buildFormWorkspace();
 }
 
+
+function updateLedgerRowCounter() {
+    const counterDisplay = document.getElementById('ledger-row-counter-display');
+    if (!counterDisplay) return;
+
+    const rows = document.getElementById('ledger-body-target').getElementsByTagName('tr');
+    let totalCount = rows.length;
+    let visibleCount = 0;
+
+    // Check if the current table is completely empty first
+    if (totalCount === 1 && rows[0].cells.length === 1 && rows[0].cells[0].colSpan > 1) {
+        counterDisplay.innerText = "Showing 0 rows total";
+        return;
+    }
+
+    for (let i = 0; i < totalCount; i++) {
+        if (rows[i].style.display !== 'none') {
+            visibleCount++;
+        }
+    }
+
+    // Adjust text based on active filter applications
+    if (visibleCount === totalCount) {
+        counterDisplay.innerText = `Showing ${totalCount} row${totalCount !== 1 ? 's' : ''} total`;
+    } else {
+        counterDisplay.innerText = `Showing ${visibleCount} of ${totalCount} filtered row${totalCount !== 1 ? 's' : ''}`;
+    }
+}
+
 async function buildFormWorkspace() {
     const box = document.getElementById('form-grid-target');
     box.innerHTML = '';
@@ -1102,6 +1131,7 @@ async function fetchLedgerRecords() {
         </td></tr>`;
         body.innerHTML += rowString;
     });
+    updateLedgerRowCounter();
 }
 
 function stageRowModification(rowData, keyParamString) {
@@ -1310,6 +1340,8 @@ function applyTableFiltering() {
         badge.textContent = activeCount;
         badge.classList.toggle('hidden', activeCount === 0);
     }
+
+    updateLedgerRowCounter();
 }
 
 function toggleFilterPanel() {

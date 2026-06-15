@@ -1478,3 +1478,17 @@ input::placeholder {
     display: inline-block;
     margin-top: 8px;
 }
+
+/* ==========================================================================
+   ✨ LEDGER ENTITY DATA COUNTER METRICS TEXT
+   ========================================================================== */
+.ledger-row-counter {
+    margin: 12px 4px 0 auto;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--slate-text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    user-select: none;
+    text-align: right;
+}
