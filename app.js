@@ -922,14 +922,13 @@ async function pushMultiEntryWizardPipeline() {
 async function commitSaveTransaction() {
     // === 📅 DATE & AGE VALIDATION POLISHES ===
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Normalize time components for accurate date evaluation
+    today.setHours(0, 0, 0, 0); 
     
     const isWizard = isWizardMode;
     const currentTable = activeTable;
     const bounds = isWizard ? (wizardStepRowMultipliers[currentTable] || 1) : 1;
 
     for (let rId = 0; rId < bounds; rId++) {
-        // Track down all date structures related to the active operational scope
         const dateFields = ['Birth_Date', 'Date_Employed', 'Date_From', 'Date_To', 'Heir_DateBirth'].filter(d => tableStructures[currentTable].includes(d));
 
         for (let attr of dateFields) {
@@ -940,18 +939,15 @@ async function commitSaveTransaction() {
                 const selectedDate = new Date(dateFieldInput.value);
                 selectedDate.setHours(0, 0, 0, 0);
 
-                // 1. Absolute Check: Prevent ANY date field from being greater than today
                 if (selectedDate > today) {
                     triggerNotificationBanner('error', `Validation Blocked: ${attr.replace(/_/g, ' ')} cannot be a future date.`);
                     return;
                 }
 
-                // 2. Age Profile Constraint Check: Enforce minimum age limit of 18 on primary member account holders
                 if (attr === 'Birth_Date' && currentTable === 'member') {
                     let age = today.getFullYear() - selectedDate.getFullYear();
                     const monthDifference = today.getMonth() - selectedDate.getMonth();
                     
-                    // Adjustment check if their birth month/day hasn't occurred yet in the current year
                     if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < selectedDate.getDate())) {
                         age--;
                     }
@@ -972,7 +968,6 @@ async function commitSaveTransaction() {
         
         tableStructures[activeTable].forEach(attr => {
             if (['First_time', 'Sex'].includes(attr)) {
-                // 💡 Fixed: Target direct single form radio buttons properly
                 const checkedRadio = document.querySelector(`input[name="name-attr-${attr}"]:checked`);
                 dataPayload[attr] = checkedRadio ? checkedRadio.value : '';
             } else {
@@ -991,6 +986,24 @@ async function commitSaveTransaction() {
         if (requiredFieldsMissing) {
             triggerNotificationBanner('error', "Validation Blocked: Missing mandatory fields.");
             return;
+        }
+
+        // ── PAG-IBIG ID EXISTENCE CHECK FOR STANDALONE ENTRIES ──
+        if (activeTable !== 'member' && activeTable !== 'employer' && dataPayload['Pagibig_ID']) {
+            try {
+                const checkResponse = await fetch(`${API_BASE}/table/member`);
+                const existingMembers = await checkResponse.json();
+                const idExists = existingMembers.some(m => String(m.Pagibig_ID).trim() === String(dataPayload['Pagibig_ID']).trim());
+                
+                if (!idExists) {
+                    triggerNotificationBanner('error', `Save Refused: Pag-IBIG ID '${dataPayload['Pagibig_ID']}' does not exist in the Member Registry.`);
+                    return; // Halt transaction execution flow completely
+                }
+            } catch (err) {
+                console.error("Referential integrity pre-check failed:", err);
+                triggerNotificationBanner('error', "Database error evaluating ID existence registry.");
+                return;
+            }
         }
 
         const targetUrl = isEditMode ? `${API_BASE}/update/${activeTable}?${workingRecordId}` : `${API_BASE}/create/${activeTable}`;
@@ -1023,9 +1036,6 @@ async function commitSaveTransaction() {
     let requiredFieldsMissing = false;
     let missingFieldLabels = [];
 
-    // ==========================================================================
-    // 🔒 FIXED: ACCURATE DATA VALIDATION ENGINE (PREVENTS ACCIDENTAL SKIPS)
-    // ==========================================================================
     const isMultiRowTable = ['employment', 'prevemployment', 'heir'].includes(activeTable);
 
     for (let rowId = 0; rowId < loopBounds; rowId++) {
@@ -1044,7 +1054,6 @@ async function commitSaveTransaction() {
                 }
 
                 if (isMissing) {
-                    // 💡 FIXED: Only evaluate empty-row bypasses if it's an actual repeated table set
                     let shouldBypassValidation = false;
                     
                     if (isMultiRowTable) {
@@ -1058,13 +1067,11 @@ async function commitSaveTransaction() {
                             return !siblingField || !siblingField.value;
                         });
                         
-                        // Row #1 (rowId === 0) must NEVER bypass validation if the table has required fields!
                         if (isEntireRowUntouched && rowId > 0) {
                             shouldBypassValidation = true;
                         }
                     }
 
-                    // If it's a standard single-entry step, or a row that was partially filled out, throw the error banner
                     if (!shouldBypassValidation) {
                         requiredFieldsMissing = true;
                         
