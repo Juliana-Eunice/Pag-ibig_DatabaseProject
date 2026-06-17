@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pag-IBIG Fund Admin Portal — Sign In</title>
+    <link rel="icon" type="image/png" href="Pag-IBIG.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+    <link rel="stylesheet" href="login-style.css">
+</head>
+<body>
+
+    <div class="left-panel">
+        <div class="left-deco-circle"></div>
+
+        <div class="left-panel-content">
+            <div class="status-badges">
+                <span class="badge badge-green">System Online</span>
+                <span class="badge badge-gray">Internal Use Only</span>
+            </div>
+
+            <div class="brand-block">
+                <div class="brand-logo">
+                    <img src="Pag-IBIG.png" alt="Pag-IBIG Logo" onerror="this.parentElement.textContent='P'">
+                </div>
+                <div class="brand-name">
+                    <h1>Pag-IBIG Fund</h1>
+                    <p>Member Database System</p>
+                </div>
+            </div>
+
+            <div class="hero-tagline">
+                <p>Your workspace for member records, employment data &amp; registry — all in one sleek console.</p>
+            </div>
+
+            <div class="stat-cards">
+                <div class="stat-card">
+                    <span class="material-symbols-outlined">group</span>
+                    <div class="stat-card-text">
+                        <strong>12.4K+</strong>
+                        <span>Members tracked</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <span class="material-symbols-outlined">table_chart</span>
+                    <div class="stat-card-text">
+                        <strong>7 modules</strong>
+                        <span>Member &amp; Employer data</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tip-box">
+                <span class="material-symbols-outlined">lightbulb</span>
+                <p><strong>Tip:</strong> Yellow banners mean confirm before you delete — read carefully.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="right-panel">
+        <div class="login-form-area">
+            <p class="greeting" id="greeting-text">Good morning</p>
+            <h2 class="login-heading">Welcome back</h2>
+            <p class="login-subtext">Sign in to pick up where you left off.</p>
+
+            <form id="auth-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label class="form-label" for="username-input">Username</label>
+                    <div class="input-wrapper">
+                        <span class="material-symbols-outlined input-icon">alternate_email</span>
+                        <input 
+                            type="text" 
+                            id="username-input" 
+                            class="form-input" 
+                            placeholder="your username"
+                            autocomplete="username"
+                            required
+                        >
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="password-row">
+                        <label class="form-label" for="password-input" style="margin:0;">Password</label>
+                        <a href="#" class="forgot-link">Forgot?</a>
+                    </div>
+                    <div class="input-wrapper">
+                        <span class="material-symbols-outlined input-icon">lock</span>
+                        <input 
+                            type="password" 
+                            id="password-input" 
+                            class="form-input" 
+                            placeholder="••••••••"
+                            autocomplete="current-password"
+                            onkeyup="checkCapsLock(event); updateProgressBar();"
+                            required
+                        >
+                        <button class="toggle-password" onclick="togglePasswordVisibility()" title="Show/hide password" type="button">
+                            <span class="material-symbols-outlined" id="eye-icon">visibility</span>
+                        </button>
+                    </div>
+                    <div class="caps-warning" id="caps-warning">
+                        <span class="material-symbols-outlined">keyboard_capslock</span>
+                        Caps Lock is on
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                </div>
+
+                <div class="stay-signed-row">
+                    <input type="checkbox" id="stay-signed" />
+                    <label for="stay-signed">Stay signed in</label>
+                </div>
+
+                <button type="submit" class="btn-login" id="login-btn">
+                    <div class="spinner"></div>
+                    <span class="btn-label">LOG IN</span>
+                </button>
+            </form>
+
+            <div class="error-banner" id="error-banner">
+                <span class="material-symbols-outlined">error</span>
+                <span id="error-message">Invalid username or password. Please try again.</span>
+            </div>
+        </div>
+
+        <div> 
+            <div class="login-footer">
+                <a href="#" class="footer-link">
+                    <span class="material-symbols-outlined">help</span> Help Desk
+                </a>
+                <div class="footer-divider"></div>
+                <div class="footer-status-label">
+                    <span class="material-symbols-outlined">admin_panel_settings</span> Admin Only
+                </div>
+            </div>
+            <p class="copyright">© Pag-IBIG Fund · Built for the modern admin stack</p>
+        </div>
+    </div>
+
+    <script>
+        // Greeting selector window loop
+        function setGreeting() {
+            const hour = new Date().getHours();
+            const greetEl = document.getElementById('greeting-text');
+            if (hour < 12) greetEl.textContent = 'Good morning';
+            else if (hour < 18) greetEl.textContent = 'Good afternoon';
+            else greetEl.textContent = 'Good evening';
+        }
+        setGreeting();
+
+        // Toggle visibility strings
+        function togglePasswordVisibility() {
+            const input = document.getElementById('password-input');
+            const icon = document.getElementById('eye-icon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.textContent = 'visibility_off';
+            } else {
+                input.type = 'password';
+                icon.textContent = 'visibility';
+            }
+        }
+
+        // Caps lock detection flag state bindings
+        function checkCapsLock(event) {
+            const capsOn = event.getModifierState && event.getModifierState('CapsLock');
+            document.getElementById('caps-warning').classList.toggle('visible', capsOn);
+        }
+
+        // Real-time password length feedback indicator
+        function updateProgressBar() {
+            const val = document.getElementById('password-input').value;
+            const fill = document.getElementById('progress-fill');
+            const pct = Math.min(100, (val.length / 9) * 100);
+            fill.style.width = pct + '%';
+        }
+
+        // Secure Authentication and Authorization Verification Handler
+        // Secure Authentication and Authorization Verification Handler with Remember-Me Mechanics
+        async function handleLogin(event) {
+            if (event) event.preventDefault();
+
+            const username = document.getElementById('username-input').value.trim();
+            const password = document.getElementById('password-input').value;
+            const btn = document.getElementById('login-btn');
+            const errorBanner = document.getElementById('error-banner');
+            const errorMsg = document.getElementById('error-message');
+            
+            // 💡 Grab the interactive state of the "Stay signed in" checkbox
+            const staySignedInChecked = document.getElementById('stay-signed').checked;
+
+            errorBanner.classList.remove('visible');
+
+            // Show interactive loading spinner state
+            btn.classList.add('loading');
+
+            // Enforce hardcoded credential checking barriers
+            const targetUser = "admin";
+            const targetPass = "grp3db.IM";
+
+            setTimeout(() => {
+                if (username === targetUser && password === targetPass) {
+                    // Hide any previous error layouts cleanly
+                    errorBanner.classList.remove('visible');
+
+                    // --- 💡 DYNAMIC STORAGE ROUTING GATEWAY ---
+                    if (staySignedInChecked) {
+                        // Permanent storage: Survives browser crashes, tab exits, and computer reboots
+                        localStorage.setItem('isAdminAuthenticated', 'true');
+                    } else {
+                        // Temporary session storage: Cleans up automatically the second this tab is closed
+                        sessionStorage.setItem('isAdminAuthenticated', 'true');
+                    }
+                    
+                    // Overwrite navigation path histories to avoid back-clicks
+                    window.location.replace("index.html");
+                } else {
+                    // Revert form state elements back to normal if challenge fails
+                    btn.classList.remove('loading');
+                    errorMsg.textContent = 'Authentication Failed: Invalid credentials entered.';
+                    errorBanner.classList.add('visible');
+                    
+                    document.getElementById('password-input').value = '';
+                    updateProgressBar(); // Reset the password strength line
+                }
+            }, 600); // Natural timing simulation curve delay matching visual asset mockup
+        }
+
+        // Break back-button loops completely out of cache execution layers
+        function preventBackNavigationExploits() {
+            window.history.pushState(null, "", window.location.href);
+            window.onpopstate = function () {
+                window.history.pushState(null, "", window.location.href);
+            };
+        }
+        
+        window.onload = function() {
+            preventBackNavigationExploits();
+            sessionStorage.removeItem('isAdminAuthenticated'); // Clear stale memory frames
+        };
+    </script>
+</body>
+</html>
